@@ -42,41 +42,43 @@ export const useChat = ({
   useEffect(scrollToBottom, [messages, scrollToBottom]);
 
   // Effect to initialize chat messages based on availability
+  // Solo reiniciar mensajes si cambia el "tipo" de chat (provider <-> langchainAgent)
+  const lastChatTypeRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!keysLoadedFromStorage) {
-      return; // Wait until keys are loaded from storage
+    if (!keysLoadedFromStorage) return;
+
+    const chatType = langchainAgent ? 'langchain' : activeProvider;
+    if (lastChatTypeRef.current !== chatType) {
+      lastChatTypeRef.current = chatType;
+      setMessages([]);
+      const isCurrentProviderEffectivelyAvailable = activeLLMService?.isAvailable(apiKeys[activeProvider]) || false;
+      const providerName = activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1);
+      if (langchainAgent) {
+        setMessages([{
+          id: 'system-init',
+          text: `Langchain agent with MCP tools ready. Type your message below.`,
+          sender: 'system',
+          timestamp: new Date(),
+          provider: undefined // No es un LLMProvider estándar
+        }]);
+      } else if (isCurrentProviderEffectivelyAvailable) {
+        setMessages([{
+          id: 'system-init',
+          text: `${providerName} chat ready. Type your message below.`,
+          sender: 'system',
+          timestamp: new Date(),
+          provider: activeProvider
+        }]);
+      } else {
+        setMessages([{
+          id: 'system-unavailable',
+          text: `${providerName} API Key not provided or invalid. Please set it in API Key Management.`,
+          sender: 'system',
+          timestamp: new Date(),
+          provider: activeProvider
+        }]);
+      }
     }
-
-    setMessages([]);
-    const isCurrentProviderEffectivelyAvailable = activeLLMService?.isAvailable(apiKeys[activeProvider]) || false;
-    const providerName = activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1);
-
-    if (langchainAgent) {
-      setMessages([{
-        id: 'system-init',
-        text: `Langchain agent with MCP tools ready. Type your message below.`, 
-        sender: 'system',
-        timestamp: new Date(),
-        provider: 'langchain'
-      }]);
-    } else if (isCurrentProviderEffectivelyAvailable) {
-      setMessages([{
-        id: 'system-init',
-        text: `${providerName} chat ready. Type your message below.`, 
-        sender: 'system',
-        timestamp: new Date(),
-        provider: activeProvider
-      }]);
-    } else {
-      setMessages([{
-        id: 'system-unavailable',
-        text: `${providerName} API Key not provided or invalid. Please set it in API Key Management.`, 
-        sender: 'system',
-        timestamp: new Date(),
-        provider: activeProvider
-      }]);
-    }
-
   }, [activeProvider, apiKeys, keysLoadedFromStorage, langchainAgent, activeLLMService]); // Add activeLLMService to dependency array
 
   // This function will contain the core chat logic
@@ -283,7 +285,7 @@ export const useChat = ({
         text: botResponseText,
         sender: errorOccurred ? 'error' : 'bot',
         timestamp: new Date(),
-        provider: langchainAgent ? 'langchain' : activeProvider // Indicate if Langchain was used
+        provider: langchainAgent ? undefined : activeProvider // Si es langchainAgent, dejar undefined
       };
       setMessages(prev => [...prev, botMessage]);
       setIsLoading(false);
@@ -297,6 +299,6 @@ export const useChat = ({
     setInput,
     isLoading,
     handleSend,
-    messagesEndRef,
+    messagesEndRef: messagesEndRef as React.RefObject<HTMLDivElement>,
   };
 };

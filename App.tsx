@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ApiKeys, AppUser, LLMProvider, LLMService } from './types';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { ApiKeys, LLMProvider, LLMService } from './types';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ApiKeyManager from './components/ApiKeyManager';
@@ -7,7 +7,6 @@ import ServerConnection from './components/ServerConnection';
 import LLMChat from './components/LLMChat';
 import { LoadingSpinnerIcon } from './constants';
 import { convertMcpToLangchainTools } from "@h1deya/langchain-mcp-tools";
-import { McpServerCleanupFn } from "@h1deya/langchain-mcp-tools";
 
 // Import specific Langchain LLM integrations
 import { ChatOpenAI } from "@langchain/openai";
@@ -22,6 +21,7 @@ import { claudeService } from './services/claudeService';
 // Import the custom hook for MCP servers
 import { useMcpServers } from './hooks/useMcpServers';
 import { useAuth } from './hooks/useAuth';
+import { createReactAgent } from "@langchain/langgraph/prebuilt";
 
 const LOCAL_STORAGE_API_KEYS = 'mcpLlmClientApiKeys';
 
@@ -48,6 +48,78 @@ const App: React.FC = () => {
 
   // Langchain agent state remains here as it depends on both LLM service and MCP servers
   const [langchainAgent, setLangchainAgent] = useState<ReturnType<typeof createReactAgent> | null>(null);
+
+  // Memo para evitar que el objeto mcpServerConfig cambie de referencia en cada render
+  const stableMcpConfig = useMemo(() => JSON.stringify(mcpServerConfig), [mcpServerConfig]);
+
+  // useEffect para inicializar el agente Langchain SOLO cuando cambia la config relevante
+  useEffect(() => {
+    let cancelled = false;
+    // Evita inicializar si ya hay un agente válido y la config no cambió realmente
+    if (!serversLoadedFromStorage || !keysLoadedFromStorage) return;
+    // Solo inicializar si hay servidores conectados Y tools disponibles
+    const connectedServers = mcpServers.filter(s => s.status === 'connected');
+    if (connectedServers.length === 0) {
+      setLangchainAgent(null);
+      return;
+    }
+    if (!activeLLMService) {
+      setLangchainAgent(null);
+      return;
+    }
+    // Solo inicializar si la config de servers cambió realmente
+    const configHash = stableMcpConfig;
+    let lastConfigHash = useRef('');
+    if (lastConfigHash.current === configHash) return;
+    lastConfigHash.current = configHash;
+    const initializeAgent = async () => {
+      try {
+        let llmInstance = null;
+        switch (activeLLMProvider) {
+          case 'openai':
+            if (apiKeys.openai) llmInstance = new ChatOpenAI({ apiKey: apiKeys.openai });
+            break;
+          case 'claude':
+            if (apiKeys.claude) llmInstance = new ChatAnthropic({ apiKey: apiKeys.claude });
+            break;
+          case 'gemini':
+            if (apiKeys.gemini) llmInstance = new ChatGoogleGenerativeAI({ apiKey: apiKeys.gemini, model: "gemini-2.5-flash-preview-04-17" });
+            break;
+        }
+        if (!llmInstance) {
+          setLangchainAgent(null);
+          return;
+        }
+        const toolsAndCleanup = await convertMcpToLangchainTools(
+          mcpServerConfig,
+          { logLevel: 'info' }
+        );
+        if (cancelled) return;
+        const tools = toolsAndCleanup.tools;
+        setLangchainAgent(prev => {
+          if (
+            prev &&
+            prev.llm &&
+            prev.tools &&
+            prev.llm.constructor === llmInstance.constructor &&
+            JSON.stringify(prev.tools) === JSON.stringify(tools)
+          ) {
+            return prev;
+          }
+          const agent = createReactAgent({ llm: llmInstance, tools });
+          return agent;
+        });
+      } catch (error) {
+        setLangchainAgent(null);
+      }
+    };
+    initializeAgent();
+    return () => {
+      cancelled = true;
+      setLangchainAgent(null);
+    };
+  // eslint-disable-next-line
+  }, [activeLLMProvider, apiKeys, activeLLMService, stableMcpConfig, serversLoadedFromStorage, keysLoadedFromStorage]);
 
   // useEffect for loading API keys (now correctly uses keysLoadedFromStorage)
   useEffect(() => {
@@ -91,87 +163,6 @@ const App: React.FC = () => {
       }
     }
   }, [apiKeys, keysLoadedFromStorage]); // Add keysLoadedFromStorage to dependency array
-
-  // useEffect for initializing Langchain agent and MCP tools (uses hook values)
-  useEffect(() => {
-    const initializeAgent = async () => {
-      if (mcpServers.length === 0) {
-        setLangchainAgent(null);
-        if (mcpCleanup) {
-          await mcpCleanup();
-        }
-        return;
-      }
-
-      if (!activeLLMService) {
-        console.warn("Active LLM service not set, cannot initialize Langchain agent.");
-        setLangchainAgent(null);
-        if (mcpCleanup) {
-          await mcpCleanup();
-        }
-        return;
-      }
-
-      try {
-        const currentMcpServerConfig = mcpServerConfig;
-
-        let llmInstance = null;
-        switch (activeLLMProvider) {
-          case 'openai':
-            if (apiKeys.openai) llmInstance = new ChatOpenAI({ apiKey: apiKeys.openai });
-            break;
-          case 'claude':
-            if (apiKeys.claude) llmInstance = new ChatAnthropic({ apiKey: apiKeys.claude });
-            break;
-          case 'gemini':
-            if (apiKeys.gemini) llmInstance = new ChatGoogleGenerativeAI({ apiKey: apiKeys.gemini, model: "gemini-2.5-flash-preview-04-17" });
-            break;
-        }
-
-        if (!llmInstance) {
-          console.error("Failed to initialize chat model for Langchain: API key not provided or invalid for selected provider.");
-          setLangchainAgent(null);
-          if (mcpCleanup) {
-            await mcpCleanup();
-          }
-          return;
-        }
-
-        const toolsAndCleanup = await convertMcpToLangchainTools(
-          currentMcpServerConfig,
-          { logLevel: 'info' }
-        );
-        const tools = toolsAndCleanup.tools;
-
-        const agent = createReactAgent({
-          llm: llmInstance,
-          tools,
-        });
-
-        console.log(tools)
-
-        setLangchainAgent(agent);
-
-        console.log("Langchain agent initialized with MCP tools.");
-
-      } catch (error) {
-        console.error("Error initializing Langchain agent or MCP tools:", error);
-        setLangchainAgent(null);
-        if (mcpCleanup) {
-          mcpCleanup();
-        }
-      }
-    };
-
-    initializeAgent();
-
-    return () => {
-      console.log("Cleaning up MCP server connections...");
-      if (mcpCleanup) {
-        mcpCleanup();
-      }
-    };
-  }, [mcpServers, activeLLMProvider, apiKeys, activeLLMService, mcpCleanup, mcpServerConfig]);
 
   const handleApiKeysChange = (newKeys: ApiKeys) => {
     setApiKeys(newKeys); // Update the apiKeys state

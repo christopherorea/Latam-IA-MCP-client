@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { MCPServer, MCPConnectionStatus } from '../types';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -169,56 +169,43 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
   }, {} as Record<string, { url: string; bearerToken?: string }>);
 
   // Effect to initialize Langchain agent and MCP tools (moved from App.tsx)
+  // Usar un hash/memo para evitar loops y solo depender de la config de servers
+  const stableConfig = useMemo(() => JSON.stringify(mcpServerConfig), [mcpServerConfig]);
+  const lastConfigRef = useRef('');
   useEffect(() => {
+    let cancelled = false;
+    if (lastConfigRef.current === stableConfig) return;
+    lastConfigRef.current = stableConfig;
     const initializeAgent = async () => {
       if (mcpServers.length === 0) {
-        // No MCP servers configured, no tools to add to the agent
         if (mcpCleanup) {
           await mcpCleanup();
           setMcpCleanup(undefined);
         }
         return;
       }
-
-      // Note: LLM initialization logic is still in App.tsx as it depends on activeLLMService
-      // The Langchain agent initialization here will receive the LLM instance from App.tsx
-
       try {
         const toolsAndCleanup = await convertMcpToLangchainTools(
           mcpServerConfig,
-          { logLevel: 'info' } // Adjust log level as needed
+          { logLevel: 'info' }
         );
-        const tools = toolsAndCleanup.tools;
-        const cleanup = toolsAndCleanup.cleanup;
-
-        // The agent creation itself will happen in App.tsx now, as it needs the LLM instance
-        // We just need to return the tools and cleanup function from the hook if needed elsewhere,
-        // or handle the agent creation in App.tsx after getting the servers and cleanup from here.
-
-        // For now, let's just manage the cleanup function here.
-        setMcpCleanup(() => cleanup); // Store cleanup function
-
-        console.log("MCP tools and cleanup initialized.");
-
+        if (cancelled) return;
+        setMcpCleanup(() => toolsAndCleanup.cleanup);
+        // console.log("MCP tools and cleanup initialized.");
       } catch (error) {
-        console.error("Error initializing MCP tools:", error);
         if (mcpCleanup) {
-          mcpCleanup(); // Call existing cleanup if it exists
+          mcpCleanup();
           setMcpCleanup(undefined);
         }
       }
     };
-
     initializeAgent();
-
-    // Cleanup function
     return () => {
-      console.log("Cleaning up MCP server connections...");
-      if (mcpCleanup) {
-        mcpCleanup();
-      }
+      cancelled = true;
+      // No cleanup aquí, solo si cambia la config
     };
-  }, [mcpServers, mcpCleanup, mcpServerConfig]); // Add dependencies
+    // eslint-disable-next-line
+  }, [stableConfig]);
 
   return {
     mcpServers,
