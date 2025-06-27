@@ -1,11 +1,13 @@
+import { LLMService } from '../types'; // Import the new interface
+
 // Stub for OpenAI service
 // In a real app, this would use the OpenAI SDK.
 
-export const isOpenAIEffectivelyAvailable = (apiKey: string | undefined): boolean => {
+const isOpenAIEffectivelyAvailable = (apiKey: string | undefined): boolean => {
   return !!apiKey && apiKey.trim() !== '';
 };
 
-export const generateOpenAIText = async (prompt: string, apiKey: string | undefined): Promise<string> => {
+const generateOpenAIText = async (prompt: string, apiKey: string | undefined): Promise<string> => {
   if (!isOpenAIEffectivelyAvailable(apiKey)) {
     return "OpenAI API is not available. Please ensure API Key is configured.";
   }
@@ -16,7 +18,7 @@ export const generateOpenAIText = async (prompt: string, apiKey: string | undefi
 };
 
 // Placeholder for streaming if needed
-export const generateOpenAITextStream = async (
+const generateOpenAITextStream = async (
   prompt: string,
   apiKey: string | undefined,
   onChunk: (text: string) => void,
@@ -32,4 +34,11 @@ export const generateOpenAITextStream = async (
   await new Promise(resolve => setTimeout(resolve, 500));
   onChunk("This feature is not fully implemented.");
   onComplete();
+};
+
+// Create and export the LLMService implementation for OpenAI
+export const openAIService: LLMService = {
+  generateText: generateOpenAIText,
+  generateTextStream: generateOpenAITextStream,
+  isAvailable: isOpenAIEffectivelyAvailable,
 };

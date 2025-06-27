@@ -1,11 +1,13 @@
+import { LLMService } from '../types'; // Import the new interface
+
 // Stub for Claude service
 // In a real app, this would use Anthropic's SDK.
 
-export const isClaudeEffectivelyAvailable = (apiKey: string | undefined): boolean => {
+const isClaudeEffectivelyAvailable = (apiKey: string | undefined): boolean => {
   return !!apiKey && apiKey.trim() !== '';
 };
 
-export const generateClaudeText = async (prompt: string, apiKey: string | undefined): Promise<string> => {
+const generateClaudeText = async (prompt: string, apiKey: string | undefined): Promise<string> => {
   if (!isClaudeEffectivelyAvailable(apiKey)) {
     return "Claude API is not available. Please ensure API Key is configured.";
   }
@@ -16,7 +18,7 @@ export const generateClaudeText = async (prompt: string, apiKey: string | undefi
 };
 
 // Placeholder for streaming if needed
-export const generateClaudeTextStream = async (
+const generateClaudeTextStream = async (
   prompt: string,
   apiKey: string | undefined,
   onChunk: (text: string) => void,
@@ -32,4 +34,11 @@ export const generateClaudeTextStream = async (
   await new Promise(resolve => setTimeout(resolve, 500));
   onChunk("This function is a placeholder.");
   onComplete();
+};
+
+// Create and export the LLMService implementation for Claude
+export const claudeService: LLMService = {
+  generateText: generateClaudeText,
+  generateTextStream: generateClaudeTextStream,
+  isAvailable: isClaudeEffectivelyAvailable,
 };

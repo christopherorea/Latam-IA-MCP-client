@@ -1,51 +1,56 @@
 import React, { useState, useEffect } from 'react';
-import { ApiKeys, AppUser, MCPServer, MCPConnectionStatus, LLMProvider } from './types';
+import { ApiKeys, AppUser, LLMProvider, LLMService } from './types';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ApiKeyManager from './components/ApiKeyManager';
 import ServerConnection from './components/ServerConnection';
 import LLMChat from './components/LLMChat';
 import { LoadingSpinnerIcon } from './constants';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { convertMcpToLangchainTools, McpServerCleanupFn } from "@h1deya/langchain-mcp-tools";
+import { convertMcpToLangchainTools } from "@h1deya/langchain-mcp-tools";
+import { McpServerCleanupFn } from "@h1deya/langchain-mcp-tools";
 
 // Import specific Langchain LLM integrations
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
+// Import refactored LLM services
+import { geminiService } from './services/geminiService';
+import { openAIService } from './services/openaiService';
+import { claudeService } from './services/claudeService';
+
+// Import the custom hook for MCP servers
+import { useMcpServers } from './hooks/useMcpServers';
+import { useAuth } from './hooks/useAuth';
+
 const LOCAL_STORAGE_API_KEYS = 'mcpLlmClientApiKeys';
-const LOCAL_STORAGE_MCP_SERVERS = 'mcpLlmClientMcpServers';
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<AppUser | null>(null);
-  const loadingAuth = false;
+  const { user, loadingAuth, signOut } = useAuth();
 
   const [apiKeys, setApiKeys] = useState<ApiKeys>({ openai: '', claude: '', gemini: '' });
   const [activeLLMProvider, setActiveLLMProvider] = useState<LLMProvider>('gemini');
-  const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
+  const [activeLLMService, setActiveLLMService] = useState<LLMService | null>(geminiService);
+
+  // Re-introduce keysLoadedFromStorage state
   const [keysLoadedFromStorage, setKeysLoadedFromStorage] = useState<boolean>(false);
-  const [serversLoadedFromStorage, setServersLoadedFromStorage] = useState<boolean>(false);
 
+  // Use the custom hook for MCP server logic
+  const { 
+    mcpServers,
+    serversLoadedFromStorage,
+    handleAddServer,
+    handleRemoveServer,
+    handleConnectToServer,
+    mcpCleanup,
+    mcpServerConfig,
+  } = useMcpServers({});
+
+  // Langchain agent state remains here as it depends on both LLM service and MCP servers
   const [langchainAgent, setLangchainAgent] = useState<ReturnType<typeof createReactAgent> | null>(null);
-  const [mcpCleanup, setMcpCleanup] = useState<McpServerCleanupFn | undefined>(undefined);
 
-  const logSetMcpServers = (updater: MCPServer[] | ((prevState: MCPServer[]) => MCPServer[])) => {
-    if (typeof updater === 'function') {
-      setMcpServers(prevState => {
-        const newState = updater(prevState);
-        return newState;
-      });
-    } else {
-      setMcpServers(updater);
-    }
-  };
-
-
+  // useEffect for loading API keys (now correctly uses keysLoadedFromStorage)
   useEffect(() => {
-
     try {
       const storedKeys = localStorage.getItem(LOCAL_STORAGE_API_KEYS);
       if (storedKeys) {
@@ -53,24 +58,31 @@ const App: React.FC = () => {
         setApiKeys(loadedKeys); // Load the keys into state
 
         if (loadedKeys && typeof loadedKeys === 'object') {
+          let initialProvider: LLMProvider = 'gemini';
+          if (loadedKeys.openai) initialProvider = 'openai';
+          if (loadedKeys.claude) initialProvider = 'claude';
+          if (loadedKeys.gemini) initialProvider = 'gemini';
 
-          if (loadedKeys.gemini) setActiveLLMProvider('gemini');
-          else if (loadedKeys.openai) setActiveLLMProvider('openai');
-          else if (loadedKeys.claude) setActiveLLMProvider('claude');
+          setActiveLLMProvider(initialProvider);
+
+          switch (initialProvider) {
+            case 'openai': setActiveLLMService(openAIService); break;
+            case 'claude': setActiveLLMService(claudeService); break;
+            case 'gemini': setActiveLLMService(geminiService); break;
+            default: setActiveLLMService(geminiService); // Default to Gemini
+          }
         }
       }
     } catch (error) {
       console.error("Error loading API keys from localStorage:", error);
-
     } finally {
-      setKeysLoadedFromStorage(true);
+      setKeysLoadedFromStorage(true); // Set to true after attempting to load
     }
-  }, []);
+  }, []); // Empty dependency array for initial load
 
-
+  // useEffect for saving API keys (now correctly uses keysLoadedFromStorage)
   useEffect(() => {
-    // Only save if keys have been loaded from storage
-    if (keysLoadedFromStorage) {
+    if (keysLoadedFromStorage) { // Only save if keys have been loaded from storage
       try {
         const keysToSave = JSON.stringify(apiKeys);
         localStorage.setItem(LOCAL_STORAGE_API_KEYS, keysToSave);
@@ -80,127 +92,65 @@ const App: React.FC = () => {
     }
   }, [apiKeys, keysLoadedFromStorage]); // Add keysLoadedFromStorage to dependency array
 
-
-  useEffect(() => {
-
-    try {
-      const storedServers = localStorage.getItem(LOCAL_STORAGE_MCP_SERVERS);
-      if (storedServers) {
-        const loadedServers = JSON.parse(storedServers) as MCPServer[];
-
-        if (loadedServers && Array.isArray(loadedServers)) {
-
-
-          logSetMcpServers(loadedServers.map(server => ({
-            ...server,
-            status: 'idle',
-            statusMessage: 'Not Connected',
-            client: new Client(
-              { name: "MCP LLM Client", version: "1.0.0" },
-              { capabilities: { tools: true } }
-            ),
-            transport: undefined,
-          })));
-
-        }
-      }
-    } catch (error) {
-      console.error("Error loading MCP servers from localStorage:", error);
-    } finally {
-      setServersLoadedFromStorage(true);
-
-    }
-  }, []);
-
-
-  useEffect(() => {
-    // Only save if servers have been loaded from storage
-    if (serversLoadedFromStorage) {
-      try {
-
-        const serversToSave = mcpServers.map(({ client, transport, ...rest }) => rest);
-        localStorage.setItem(LOCAL_STORAGE_MCP_SERVERS, JSON.stringify(serversToSave));
-
-      } catch (error) {
-        console.error("Error saving MCP servers to localStorage:", error);
-      }
-    }
-  }, [mcpServers, serversLoadedFromStorage]); // Add serversLoadedFromStorage to dependency array
-
-  // New useEffect for initializing Langchain agent and MCP tools
+  // useEffect for initializing Langchain agent and MCP tools (uses hook values)
   useEffect(() => {
     const initializeAgent = async () => {
       if (mcpServers.length === 0) {
-        // No MCP servers configured, no tools to add to the agent
         setLangchainAgent(null);
         if (mcpCleanup) {
           await mcpCleanup();
-          setMcpCleanup(undefined);
+        }
+        return;
+      }
+
+      if (!activeLLMService) {
+        console.warn("Active LLM service not set, cannot initialize Langchain agent.");
+        setLangchainAgent(null);
+        if (mcpCleanup) {
+          await mcpCleanup();
         }
         return;
       }
 
       try {
-        // Create MCP server config for convertMcpToLangchainTools
-        const mcpServerConfig = mcpServers.reduce((acc, server) => {
-          acc[server.name] = {
-            url: server.url,
-            bearerToken: server.bearerToken,
-          };
-          return acc;
-        }, {} as Record<string, { url: string; bearerToken?: string }>);
+        const currentMcpServerConfig = mcpServerConfig;
 
-        // Initialize LLM based on activeLLMProvider and apiKeys
-        const initChatModel = (provider: LLMProvider, keys: ApiKeys) => {
-          switch (provider) {
-            case 'openai':
-              if (keys.openai) {
-                return new ChatOpenAI({ apiKey: keys.openai });
-              }
-              return null;
-            case 'claude':
-              if (keys.claude) {
-                return new ChatAnthropic({ apiKey: keys.claude });
-              }
-              return null;
-            case 'gemini':
-              if (keys.gemini && typeof keys.gemini === 'string') {
-                return new ChatGoogleGenerativeAI({ apiKey: keys.gemini, model: "gemini-2.5-flash-preview-04-17" });
-              }
-              return null;
-            default:
-              return null;
-          }
-        };
+        let llmInstance = null;
+        switch (activeLLMProvider) {
+          case 'openai':
+            if (apiKeys.openai) llmInstance = new ChatOpenAI({ apiKey: apiKeys.openai });
+            break;
+          case 'claude':
+            if (apiKeys.claude) llmInstance = new ChatAnthropic({ apiKey: apiKeys.claude });
+            break;
+          case 'gemini':
+            if (apiKeys.gemini) llmInstance = new ChatGoogleGenerativeAI({ apiKey: apiKeys.gemini, model: "gemini-2.5-flash-preview-04-17" });
+            break;
+        }
 
-        const llm = initChatModel(activeLLMProvider, apiKeys);
-
-        if (!llm) {
-          console.error("Failed to initialize chat model: API key not provided or invalid for selected provider.");
+        if (!llmInstance) {
+          console.error("Failed to initialize chat model for Langchain: API key not provided or invalid for selected provider.");
           setLangchainAgent(null);
           if (mcpCleanup) {
             await mcpCleanup();
-            setMcpCleanup(undefined);
           }
           return;
         }
 
         const toolsAndCleanup = await convertMcpToLangchainTools(
-          mcpServerConfig,
-          { logLevel: 'info' } // Adjust log level as needed
+          currentMcpServerConfig,
+          { logLevel: 'info' }
         );
         const tools = toolsAndCleanup.tools;
-        const cleanup = toolsAndCleanup.cleanup;
 
         const agent = createReactAgent({
-          llm,
+          llm: llmInstance,
           tools,
         });
 
         console.log(tools)
 
         setLangchainAgent(agent);
-        setMcpCleanup(() => cleanup); // Store cleanup function
 
         console.log("Langchain agent initialized with MCP tools.");
 
@@ -208,22 +158,20 @@ const App: React.FC = () => {
         console.error("Error initializing Langchain agent or MCP tools:", error);
         setLangchainAgent(null);
         if (mcpCleanup) {
-          mcpCleanup(); // Call existing cleanup if it exists
-          setMcpCleanup(undefined);
+          mcpCleanup();
         }
       }
     };
 
     initializeAgent();
 
-    // Cleanup function
     return () => {
       console.log("Cleaning up MCP server connections...");
       if (mcpCleanup) {
         mcpCleanup();
       }
     };
-  }, [mcpServers, activeLLMProvider, apiKeys]); // Add apiKeys to dependency array
+  }, [mcpServers, activeLLMProvider, apiKeys, activeLLMService, mcpCleanup, mcpServerConfig]);
 
   const handleApiKeysChange = (newKeys: ApiKeys) => {
     setApiKeys(newKeys); // Update the apiKeys state
@@ -232,117 +180,16 @@ const App: React.FC = () => {
       if (newKeys.gemini?.trim()) setActiveLLMProvider('gemini');
       else if (newKeys.openai?.trim()) setActiveLLMProvider('openai');
       else if (newKeys.claude?.trim()) setActiveLLMProvider('claude');
-
     }
   };
 
   const handleLLMProviderChange = (provider: LLMProvider) => {
-
     setActiveLLMProvider(provider);
-  };
-
-  const handleAddServer = (name: string, url: string, bearerToken?: string) => {
-
-
-    const client = new Client(
-      { name: "MCP LLM Client", version: "1.0.0" },
-      { capabilities: { tools: true } }
-    );
-
-
-    const newServer: MCPServer = {
-      id: `mcp-${Date.now()}`,
-      name,
-      url,
-      bearerToken: bearerToken?.trim() || undefined,
-      status: 'idle',
-      statusMessage: 'Not Connected',
-      client,
-      transport: undefined,
-    };
-    logSetMcpServers(prev => [...prev, newServer]);
-
-  };
-
-  const handleRemoveServer = (serverId: string) => {
-
-    logSetMcpServers(prev => {
-      const serverToRemove = prev.find(server => server.id === serverId);
-
-      if (serverToRemove?.transport) {
-
-        serverToRemove.transport.close();
-      }
-      const updatedServers = prev.filter(server => server.id !== serverId);
-
-      return updatedServers;
-    });
-  };
-
-  const updateServerStatus = (serverId: string, status: MCPConnectionStatus, message: string) => {
-
-    logSetMcpServers(prev => prev.map(server =>
-      server.id === serverId ? { ...server, status, statusMessage: message } : server
-    ));
-  };
-
-  const handleConnectToServer = async (serverId: string) => {
-
-    const server = mcpServers.find(s => s.id === serverId);
-    if (!server || !server.client) {
-
-      return;
-    }
-
-
-
-    if (server.transport) {
-
-      server.transport.close();
-
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-    }
-
-    updateServerStatus(serverId, 'connecting', `Connecting to ${server.name}...`);
-
-
-    try {
-
-      const directTransport = new StreamableHTTPClientTransport(
-        new URL(server.url),
-        {
-          requestInit: {
-            method: 'POST',
-            headers: {
-
-              'Content-Type': 'application/json',
-              'Accept': 'application/json; text/event-stream',
-
-              ...(server.bearerToken && { 'Authorization': `Bearer ${server.bearerToken}` }),
-            }
-          },
-        }
-      );
-
-
-      logSetMcpServers(prev => prev.map(s =>
-        s.id === serverId ? { ...s, transport: directTransport } : s
-      ));
-
-
-
-      await server.client.connect(directTransport);
-
-
-      updateServerStatus(serverId, 'connected', 'Connected to MCP server.');
-
-
-    } catch (error: any) {
-
-      console.error(`Error connecting to ${server.name} using MCP SDK:`, error);
-      let message = `Failed to connect: ${error.message || 'Unknown error'}.`;
-      updateServerStatus(serverId, 'error', message);
+    switch (provider) {
+      case 'openai': setActiveLLMService(openAIService); break;
+      case 'claude': setActiveLLMService(claudeService); break;
+      case 'gemini': setActiveLLMService(geminiService); break;
+      default: setActiveLLMService(null);
     }
   };
 
@@ -357,7 +204,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-gray-100">
-      <Header user={user} />
+      <Header user={user} signOut={signOut} />
       <main className="flex-grow container mx-auto p-4 md:p-6 lg:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
 
@@ -376,7 +223,7 @@ const App: React.FC = () => {
               onApiKeysChange={handleApiKeysChange}
               activeLLMProvider={activeLLMProvider}
               onLLMProviderChange={handleLLMProviderChange}
-              keysLoadedFromStorage={keysLoadedFromStorage}
+              keysLoadedFromStorage={keysLoadedFromStorage} // Pass keysLoadedFromStorage
             />
             <ServerConnection
               servers={mcpServers}
@@ -395,7 +242,8 @@ const App: React.FC = () => {
                 activeProvider={activeLLMProvider}
                 mcpServers={mcpServers}
                 keysLoadedFromStorage={keysLoadedFromStorage}
-                langchainAgent={langchainAgent} // Pass the agent to LLMChat
+                langchainAgent={langchainAgent}
+                activeLLMService={activeLLMService}
               />
             )}
           </div>

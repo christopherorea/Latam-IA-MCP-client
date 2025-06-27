@@ -1,29 +1,35 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ApiKeys, ChatMessage, LLMProvider, MCPServer } from '../types';
-import {
-  generateGeminiText,
-  isGeminiEffectivelyAvailable
-} from '../services/geminiService';
-import {
-  generateOpenAIText,
-  isOpenAIEffectivelyAvailable
-} from '../services/openaiService'; // Stubbed
-import {
-  generateClaudeText,
-  isClaudeEffectivelyAvailable
-} from '../services/claudeService'; // Stubbed
+import React from 'react'; // Removed useState, useRef, useEffect, useCallback
+import { ApiKeys, ChatMessage, LLMProvider, MCPServer, LLMService } from '../types';
+// Remove specific service imports
+// import {
+//   generateGeminiText,
+//   isGeminiEffectivelyAvailable
+// } from '../services/geminiService';
+// import {
+//   generateOpenAIText,
+//   isOpenAIEffectivelyAvailable
+// } from '../services/openaiService'; // Stubbed
+// import {
+//   generateClaudeText,
+//   isClaudeEffectivelyAvailable
+// } from '../services/claudeService'; // Stubbed
 import { LoadingSpinnerIcon, OpenAiIcon, ClaudeIcon, GeminiIcon, BrainIcon } from '../constants';
 
-// Import Langchain types
+// Import Langchain types (still needed for prop type)
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { HumanMessage, AIMessage } from "@langchain/core/messages"; // Import AIMessage
+// Remove HumanMessage, AIMessage as they are used inside the hook
+// import { HumanMessage, AIMessage } from "@langchain/core/messages";
+
+// Import the custom hook
+import { useChat } from '../hooks/useChat';
 
 interface LLMChatProps {
   apiKeys: ApiKeys;
   activeProvider: LLMProvider;
-  mcpServers: MCPServer[]; // Add mcpServers to props
-  keysLoadedFromStorage: boolean; // Add this prop
-  langchainAgent: ReturnType<typeof createReactAgent> | null; // Add langchainAgent prop
+  mcpServers: MCPServer[];
+  keysLoadedFromStorage: boolean;
+  langchainAgent: ReturnType<typeof createReactAgent> | null;
+  activeLLMService: LLMService | null; // The active LLM service object
 }
 
 const LLMChat: React.FC<LLMChatProps> = ({
@@ -31,225 +37,22 @@ const LLMChat: React.FC<LLMChatProps> = ({
   activeProvider,
   mcpServers,
   keysLoadedFromStorage,
-  langchainAgent // Destructure langchainAgent
+  langchainAgent,
+  activeLLMService
 }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const [tools, setTools] = useState<any[]>([]); // State to store received tools
+  // Use the custom hook to manage chat state and logic
+  const { messages, input, setInput, isLoading, handleSend, messagesEndRef } = useChat({
+    apiKeys,
+    activeProvider,
+    mcpServers,
+    keysLoadedFromStorage,
+    langchainAgent,
+    activeLLMService,
+  });
 
-  const isCurrentProviderEffectivelyAvailable = useCallback(() => {
-    switch (activeProvider) {
-      case 'gemini':
-        return isGeminiEffectivelyAvailable(apiKeys.gemini);
-      case 'openai':
-        return isOpenAIEffectivelyAvailable(apiKeys.openai);
-      case 'claude':
-        return isClaudeEffectivelyAvailable(apiKeys.claude);
-      default:
-        return false;
-    }
-  }, [apiKeys, activeProvider]);
-
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  useEffect(scrollToBottom, [messages, scrollToBottom]);
-
-  useEffect(() => {
-    if (!keysLoadedFromStorage) {
-      return; // Wait until keys are loaded from storage
-    }
-
-    // Clear messages when provider or its key availability changes, or when agent availability changes
-    setMessages([]);
-    const available = isCurrentProviderEffectivelyAvailable();
-    const providerName = activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1);
-
-    if (langchainAgent) {
-      setMessages([{
-        id: 'system-init',
-        text: `Langchain agent with MCP tools ready. Type your message below.`, // Updated message
-        sender: 'system',
-        timestamp: new Date(),
-        provider: 'langchain' // Indicate Langchain is active
-      }]);
-    } else if (available) {
-      setMessages([{
-        id: 'system-init',
-        text: `${providerName} chat ready. Type your message below.`, // Original message
-        sender: 'system',
-        timestamp: new Date(),
-        provider: activeProvider
-      }]);
-    } else {
-      setMessages([{
-        id: 'system-unavailable',
-        text: `${providerName} API Key not provided or invalid. Please set it in API Key Management.`, // Original message
-        sender: 'system',
-        timestamp: new Date(),
-        provider: activeProvider
-      }]);
-    }
-
-  }, [activeProvider, apiKeys, isCurrentProviderEffectivelyAvailable, mcpServers, keysLoadedFromStorage, langchainAgent]); // Add langchainAgent to dependency array
-
-  const handleSend = async () => {
-    // Allow sending if input is not empty AND (Langchain agent is available OR a provider is available OR an MCP server is connected)
-    if (!input.trim() || isLoading || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable() && mcpServers.every(server => server.status !== 'connected'))) return; // Add langchainAgent check
-
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      text: input,
-      sender: 'user',
-      timestamp: new Date(),
-      provider: activeProvider // Still associate with activeProvider for display
-    };
-    const updatedMessages = [...messages, userMessage]; // Create the array including the new message
-    setMessages(updatedMessages); // Update state
-    const currentInput = input;
-    setInput('');
-    setIsLoading(true);
-
-    let botResponseText = '';
-    let errorOccurred = false;
-
-    try {
-      if (langchainAgent) {
-        // Use Langchain agent if available
-        // Map ChatMessage objects to Langchain message types and take the last 20
-        const langchainMessages = updatedMessages.slice(-20).map(msg => { // Use updatedMessages here
-          // Filter out messages with empty text content and ensure correct types
-          if (msg.sender === 'user' && typeof msg.text === 'string' && msg.text.trim() !== '') {
-            return new HumanMessage(msg.text);
-          } else if (msg.sender === 'bot' && typeof msg.text === 'string' && msg.text.trim() !== '') {
-            return new AIMessage(msg.text);
-          }
-          // Optionally handle other message types or filter them out
-          return null;
-        }).filter(msg => msg !== null); // Filter out any null messages
-
-        const agentFinalState = await langchainAgent.invoke(
-          { messages: langchainMessages }, // Pass the mapped and sliced messages
-          { configurable: { thread_id: "chat-thread" } } // Use a consistent thread ID
-        );
-
-        // Extract the final AI message from the agent's state and ensure it is valid
-        const finalMessages = agentFinalState?.messages;
-        const lastMessage = Array.isArray(finalMessages) && finalMessages.length > 0
-          ? finalMessages[finalMessages.length - 1]
-          : undefined;
-
-        if (lastMessage && typeof lastMessage === 'object' && 'content' in lastMessage && typeof lastMessage.content === 'string') {
-          botResponseText = lastMessage.content;
-        } else {
-          console.warn("Langchain agent did not return a final message with valid content:", agentFinalState);
-          botResponseText = "Received an unexpected or empty response from the AI agent.";
-          errorOccurred = true;
-        }
-
-      } else {
-        // Fallback to existing logic if Langchain agent is not available
-        console.log("Langchain agent not available, falling back to direct connection...");
-        const connectedServer = mcpServers.find(server => server.status === 'connected');
-
-        if (connectedServer && connectedServer.client) {
-          // ...existing MCP server interaction logic...
-          try {
-            const response = await (connectedServer.client as any).request('chat/message', { text: currentInput });
-            const responseResult = response as any;
-
-            if (responseResult && responseResult.toolCall) {
-              // ...existing tool call handling...
-              setMessages(prev => [...prev, {
-                id: `toolcall-${Date.now()}`,
-                text: `Ejecutando herramienta: ${responseResult.toolCall.name}...`,
-                sender: 'system',
-                timestamp: new Date(),
-                provider: activeProvider
-              }]);
-
-              try {
-                const toolResultResponse = await connectedServer.client.callTool({
-                  name: responseResult.toolCall.name,
-                  arguments: responseResult.toolCall.arguments
-                });
-                botResponseText = (toolResultResponse as any)?.text || `Tool ${responseResult.toolCall.name} executed successfully.`;
-              } catch (toolError: any) {
-                console.error(`Error executing tool ${responseResult.toolCall.name}:`, toolError);
-                botResponseText = `Error executing tool ${responseResult.toolCall.name}: ${toolError.message || 'Unknown error'}`;
-                errorOccurred = true;
-              }
-
-            } else if (responseResult && responseResult.text) {
-              botResponseText = responseResult.text;
-            } else {
-              console.warn("MCP server response did not contain a text or toolCall property:", response);
-              botResponseText = "Received an unexpected response from the MCP server.";
-              errorOccurred = true;
-            }
-          } catch (error: any) {
-            console.error("Error interacting with MCP server:", error);
-            botResponseText = `Error from MCP server: ${error.message || 'Unknown error'}`;
-            errorOccurred = true;
-          }
-
-        } else if (isCurrentProviderEffectivelyAvailable()) {
-          // ...existing individual LLM provider logic...
-          try {
-            switch (activeProvider) {
-              case 'gemini':
-                botResponseText = await generateGeminiText(currentInput, apiKeys.gemini);
-                break;
-              case 'openai':
-                botResponseText = await generateOpenAIText(currentInput, apiKeys.openai);
-                break;
-              case 'claude':
-                botResponseText = await generateClaudeText(currentInput, apiKeys.claude);
-                break;
-              default:
-                botResponseText = "Selected LLM provider is not recognized.";
-                errorOccurred = true;
-            }
-
-            // Check for error messages from services
-            if (botResponseText.startsWith("Error from") ||
-              botResponseText.includes("API is not available") ||
-              botResponseText.includes("API client could not be initialized") ||
-              botResponseText.includes("not configured") ||
-              botResponseText.includes("not fully implemented") ||
-              botResponseText.includes("placeholder")) {
-              errorOccurred = true;
-            }
-
-          } catch (error: any) {
-            console.error(`Chat error with ${activeProvider}:`, error);
-            botResponseText = "An unexpected error occurred. Please try again.";
-            errorOccurred = true;
-          }
-        } else {
-          botResponseText = "No LLM provider configured and no MCP server connected.";
-          errorOccurred = true;
-        }
-      }
-    } catch (overallError: any) {
-      console.error("Overall chat handling error:", overallError);
-      botResponseText = `An unexpected error occurred: ${overallError.message || 'Unknown error'}.`;
-      errorOccurred = true;
-    }
-
-    const botMessage: ChatMessage = {
-      id: `bot-${Date.now()}`,
-      text: botResponseText,
-      sender: errorOccurred ? 'error' : 'bot',
-      timestamp: new Date(),
-      provider: langchainAgent ? 'langchain' : activeProvider // Indicate if Langchain was used
-    };
-    setMessages(prev => [...prev, botMessage]);
-    setIsLoading(false);
-  };
+  // isCurrentProviderEffectivelyAvailable is now internal to the hook or can be derived if needed
+  // For the placeholder text, we can derive availability based on activeLLMService and apiKeys
+  const isCurrentProviderEffectivelyAvailable = activeLLMService?.isAvailable(apiKeys[activeProvider]) || false;
 
   const getBubbleClasses = (sender: ChatMessage['sender']) => {
     switch (sender) {
@@ -270,7 +73,8 @@ const LLMChat: React.FC<LLMChatProps> = ({
     if (!keysLoadedFromStorage) return "Cargando claves API...";
     if (langchainAgent) return "Type your message to the Langchain agent..."; // Updated placeholder
     const providerName = activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1);
-    if (isCurrentProviderEffectivelyAvailable()) return `Type your message to ${providerName}...`;
+    // Use the service's isAvailable method (derived from activeLLMService prop)
+    if (isCurrentProviderEffectivelyAvailable) return `Type your message to ${providerName}...`;
     return `${providerName} API Key not configured`;
   };
 
@@ -286,11 +90,11 @@ const LLMChat: React.FC<LLMChatProps> = ({
 
   const providerTitleName = langchainAgent ? "Langchain Agent" : activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1); // Update title
 
-  // New variable to control input field disabled state
-  const isInputDisabled = isLoading || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable() && mcpServers.every(server => server.status !== 'connected'));
+  // Use isLoading from the hook
+  const isInputDisabled = isLoading || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable && mcpServers.every(server => server.status !== 'connected'));
 
-  // Keep isSendButtonDisabled for the button, which should be disabled if input is empty
-  const isSendButtonDisabled = isLoading || !input.trim() || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable() && mcpServers.every(server => server.status !== 'connected'));
+  // Use isLoading and input from the hook
+  const isSendButtonDisabled = isLoading || !input.trim() || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable && mcpServers.every(server => server.status !== 'connected'));
 
   return (
     <div className="p-4 sm:p-6 bg-gray-800 rounded-xl shadow-xl flex flex-col h-[600px] max-h-[70vh]">
@@ -304,7 +108,7 @@ const LLMChat: React.FC<LLMChatProps> = ({
         </div>
       ) : (
         <>
-          {!langchainAgent && !isCurrentProviderEffectivelyAvailable() && messages.length <=1 && ( // Show message if no agent or provider is available
+          {!langchainAgent && !isCurrentProviderEffectivelyAvailable && messages.length <=1 && ( // Show message if no agent or provider is available
             <div className="p-3 mb-4 text-center bg-yellow-800/60 text-yellow-300 rounded-lg border border-yellow-700 text-sm">
               {getPlaceholderText()}. Chat features disabled.
             </div>
@@ -321,8 +125,7 @@ const LLMChat: React.FC<LLMChatProps> = ({
                     <p className={`text-xs mt-1.5 ${msg.sender === 'user' ? 'text-sky-200/80' : 'text-gray-400/80'} text-right`}>
                       {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </p>
-                  )}
-                </div>
+                  )}\n                </div>
               </div>
             ))}
             <div ref={messagesEndRef} />
@@ -332,17 +135,17 @@ const LLMChat: React.FC<LLMChatProps> = ({
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !isSendButtonDisabled && handleSend()} // Use the new disabled state for button logic
+              onKeyPress={(e) => e.key === 'Enter' && !isSendButtonDisabled && handleSend()} // Use handleSend from the hook
               placeholder={getPlaceholderText()}
               className="flex-grow px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-l-lg text-gray-200 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 transition-colors disabled:opacity-60"
-              disabled={isInputDisabled} // Use the new input disabled state
+              disabled={isInputDisabled} // Use isInputDisabled from the hook
             />
             <button
-              onClick={handleSend}
-              disabled={isSendButtonDisabled} // Use the original send button disabled state
+              onClick={handleSend} // Use handleSend from the hook
+              disabled={isSendButtonDisabled} // Use isSendButtonDisabled from the hook
               className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2.5 px-5 sm:px-6 rounded-r-lg transition duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-75 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px] sm:min-w-[100px]"
             >
-              {isLoading ? <LoadingSpinnerIcon className="w-5 h-5 text-white"/> : 'Send'}
+              {isLoading ? <LoadingSpinnerIcon className="w-5 h-5 text-white"/> : 'Send'} // Use isLoading from the hook
             </button>
           </div>
         </>

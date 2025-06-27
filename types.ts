@@ -36,9 +36,18 @@ export interface MCPServer {
 }
 
 export interface LLMChatProps {
-  // ...existing code...
+  apiKeys: ApiKeys;
+  activeProvider: LLMProvider;
   mcpServers: MCPServer[];
-  // ...existing code...
+  keysLoadedFromStorage: boolean;
+  langchainAgent: ReturnType<typeof createReactAgent> | null;
+  activeLLMService: LLMService | null; // Add the new prop
+}
+
+export interface LLMService {
+  generateText(prompt: string, apiKey: string | undefined): Promise<string>;
+  generateTextStream?(prompt: string, apiKey: string | undefined, onChunk: (text: string) => void, onComplete: () => void, onError: (errorMsg: string) => void): Promise<void>;
+  isAvailable(apiKey: string | undefined): boolean;
 }
 
 declare global {

@@ -1,5 +1,6 @@
 import { GoogleGenAI, GenerateContentResponse, Part, Content } from "@google/genai";
 import { GEMINI_API_MODEL } from '../constants';
+import { LLMService } from '../types'; // Import the new interface
 
 // Removed global 'ai' instance. Each call will get a fresh client or use a short-lived one.
 
@@ -96,4 +97,11 @@ export const generateGeminiTextStream = async (
   } finally {
     onComplete();
   }
+};
+
+// Create and export the LLMService implementation for Gemini
+export const geminiService: LLMService = {
+  generateText: generateGeminiText,
+  generateTextStream: generateGeminiTextStream,
+  isAvailable: isGeminiEffectivelyAvailable,
 };
