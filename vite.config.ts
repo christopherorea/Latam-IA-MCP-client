@@ -13,6 +13,10 @@ export default defineConfig(() => {
     define: {
       'global': 'window',
     },
+    build: {
+      outDir: 'CordovaApp/www', // Salida de build para Cordova
+      emptyOutDir: true,   // Limpia la carpeta antes de cada build
+    },
     plugins: [
       commonjs(),
       nodePolyfills({

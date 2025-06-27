@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="io.cordova.latam.iamcpclient" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>Latam-IA-MCP-client</name>
+    <description>Conector universal open source para interactuar con sistemas MCP globales y modelos de lenguaje (LLM) desde tu navegador.</description>
+    <author email="dev@latam-ia.org" href="https://latam-ia.org">
+        Latam-IA Team
+    </author>
+    <content src="index.html" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <preference name="BackgroundColor" value="#1a202c" />
+    <preference name="StatusBarBackgroundColor" value="#1a202c" />
+    <preference name="StatusBarStyle" value="lightcontent" />
+    <icon src="assets/icons/icon-192.png" />
+    <icon src="assets/icons/icon-512.png" width="512" height="512" />
+    <icon src="assets/icons/icon-144.png" width="144" height="144" />
+    <icon src="assets/icons/icon-128.png" width="128" height="128" />
+    <platform name="android">
+        <icon src="assets/icons/icon-192.png" density="xxxhdpi" />
+        <icon src="assets/icons/icon-144.png" density="xxhdpi" />
+        <icon src="assets/icons/icon-128.png" density="xhdpi" />
+    </platform>
+    <platform name="ios">
+        <icon src="assets/icons/icon-192.png" width="192" height="192" />
+        <icon src="assets/icons/icon-512.png" width="512" height="512" />
+        <icon src="assets/icons/icon-144.png" width="144" height="144" />
+        <icon src="assets/icons/icon-128.png" width="128" height="128" />
+    </platform>
+    <!-- Screenshots for store listing -->
+    <screenshot src="assets/icons/screenshot-wide.png" width="800" height="398" />
+    <screenshot src="assets/icons/screenshot-mobile.png" width="360" height="626" />
+    <preference name="SplashScreenBackgroundColor" value="#1a202c" />
+    <preference name="SplashScreen" value="assets/icons/icon-512.png" />
+    <preference name="themeColor" value="#1a202c" />
+    <preference name="lang" value="es" />
+</widget>
