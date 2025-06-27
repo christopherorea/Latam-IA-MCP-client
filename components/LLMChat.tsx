@@ -96,6 +96,21 @@ const LLMChat: React.FC<LLMChatProps> = ({
 
   }, [activeProvider, apiKeys, isCurrentProviderEffectivelyAvailable, mcpServers, keysLoadedFromStorage, langchainAgent]); // Add langchainAgent to dependency array
 
+  // Add logging for debugging input disabled state
+  useEffect(() => {
+    console.log('LLMChat state/props update:');
+    console.log('  keysLoadedFromStorage:', keysLoadedFromStorage);
+    console.log('  activeProvider:', activeProvider);
+    console.log('  apiKeys:', apiKeys); // Log the apiKeys object
+    console.log('  isCurrentProviderEffectivelyAvailable():', isCurrentProviderEffectivelyAvailable());
+    console.log('  langchainAgent present:', !!langchainAgent); // Log boolean presence
+    console.log('  mcpServers status:', mcpServers.map(server => server.status));
+    console.log('  isLoading:', isLoading);
+    console.log('  input is empty:', !input.trim());
+    const isSendButtonDisabled = isLoading || !input.trim() || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable() && mcpServers.every(server => server.status !== 'connected'));
+    console.log('  isSendButtonDisabled (determines input disabled state):', isSendButtonDisabled);
+  }, [isLoading, input, keysLoadedFromStorage, activeProvider, apiKeys, isCurrentProviderEffectivelyAvailable, langchainAgent, mcpServers]);
+
 
   const handleSend = async () => {
     // Allow sending if input is not empty AND (Langchain agent is available OR a provider is available OR an MCP server is connected)
@@ -272,6 +287,10 @@ const LLMChat: React.FC<LLMChatProps> = ({
 
   const providerTitleName = langchainAgent ? "Langchain Agent" : activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1); // Update title
 
+  // New variable to control input field disabled state
+  const isInputDisabled = isLoading || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable() && mcpServers.every(server => server.status !== 'connected'));
+
+  // Keep isSendButtonDisabled for the button, which should be disabled if input is empty
   const isSendButtonDisabled = isLoading || !input.trim() || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable() && mcpServers.every(server => server.status !== 'connected'));
 
   return (
@@ -314,14 +333,14 @@ const LLMChat: React.FC<LLMChatProps> = ({
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !isSendButtonDisabled && handleSend()} // Use the new disabled state
+              onKeyPress={(e) => e.key === 'Enter' && !isSendButtonDisabled && handleSend()} // Use the new disabled state for button logic
               placeholder={getPlaceholderText()}
               className="flex-grow px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-l-lg text-gray-200 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 transition-colors disabled:opacity-60"
-              disabled={isSendButtonDisabled} // Use the new disabled state
+              disabled={isInputDisabled} // Use the new input disabled state
             />
             <button
               onClick={handleSend}
-              disabled={isSendButtonDisabled} // Use the new disabled state
+              disabled={isSendButtonDisabled} // Use the original send button disabled state
               className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2.5 px-5 sm:px-6 rounded-r-lg transition duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-75 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px] sm:min-w-[100px]"
             >
               {isLoading ? <LoadingSpinnerIcon className="w-5 h-5 text-white"/> : 'Send'}
