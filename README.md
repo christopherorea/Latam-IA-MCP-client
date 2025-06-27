@@ -193,9 +193,9 @@ No necesitas hacer ningún cambio. El proyecto está listo para funcionar como P
 - Simplemente ejecuta en desarrollo (`npm run dev`) o despliega el build (`npm run build`).
 - El archivo `index.html` ya apunta al manifiesto y service worker de PWA:
   ```html
-  <link rel="manifest" id="manifest-link" href="/public/manifest-pwa.json">
+  <link rel="manifest" id="manifest-link" href="/manifest-pwa.json">
   <script>
-    navigator.serviceWorker.register('/public/service-worker.js')
+    navigator.serviceWorker.register('/service-worker.js')
   </script>
   ```
 - Puedes instalar la app como PWA desde el navegador (opción "Instalar app" en Chrome, Edge, etc.).
@@ -205,7 +205,7 @@ No necesitas hacer ningún cambio. El proyecto está listo para funcionar como P
 Si quieres tu propia extensión personalizada:
 1. Cambia en `index.html` la línea del manifiesto por la de extensión:
    ```html
-   <link rel="manifest" id="manifest-link" href="/public/manifest.json">
+   <link rel="manifest" id="manifest-link" href="/manifest.json">
    ```
 2. Ejecuta el build del proyecto:
    ```bash
