@@ -11,6 +11,25 @@
 
 ---
 
+## 📑 Índice
+
+- [Demo en vivo](#-demo-en-vivo)
+- [Instalación y ejecución local](#-instalación-y-ejecución-local)
+- [Estructura del proyecto](#-estructura-del-proyecto)
+- [Requisitos previos](#-requisitos-previos)
+- [Seguridad y privacidad](#-seguridad-y-privacidad)
+- [Reglas para contribuir](#-reglas-para-contribuir)
+- [¿Cómo crear un branch?](#-cómo-crear-un-branch)
+- [Validación](#-validación)
+- [TODOs](#todos)
+- [¿Para quién es?](#-para-quién-es)
+- [¿Por qué usarlo?](#-por-qué-usarlo)
+- [Patrocinador](#-patrocinador)
+- [Licencia](#-licencia)
+- [Modos de uso: PWA y extensión de Chrome](#modos-de-uso-pwa-y-extensión-de-chrome)
+
+---
+
 ## 🌐 Demo en vivo
 
 [¡Pruébalo aquí!](https://christopherorea.github.io/Latam-IA-MCP-client/)
@@ -164,27 +183,60 @@ Este proyecto es open source bajo licencia MIT.
 
 ---
 
-## 📦 Como extensión de Chrome
+## 🧩 Modos de uso: PWA y extensión de Chrome
 
-Este proyecto también puede ser construido y cargado como una extensión de navegador (actualmente probado en Chrome).
+Puedes usar este cliente de tres formas principales:
 
-1.  **Asegúrate de tener los iconos:**
-    - Coloca tus archivos de icono (`icon-16.png`, `icon-32.png`, `icon-48.png`, `icon-128.png`) dentro de la carpeta `public/icons/`. Si solo tienes uno, asegúrate de que el `manifest.json` apunte a él para todos los tamaños.
-2.  **Construye el proyecto:**
-    - Abre tu terminal en la raíz del proyecto.
-    - Ejecuta el comando de build de Vite:
-      ```bash
-      npm run build
-      ```
-    - Esto creará la carpeta `dist/` con todos los archivos necesarios para la extensión.
-3.  **Carga la extensión en Chrome:**
-    - Abre Chrome y ve a `chrome://extensions/`.
-    - Activa el "Modo desarrollador" (Developer mode) en la esquina superior derecha.
-    - Haz clic en el botón "Cargar descomprimida" (Load unpacked).
-    - Selecciona la carpeta `dist/` que se generó en el paso anterior.
-4.  **Usa la extensión:**
-    - Busca el icono de la extensión en la barra de herramientas de Chrome y haz clic en él para abrir el popup.
+### 1. Usar como PWA (por defecto)
+
+No necesitas hacer ningún cambio. El proyecto está listo para funcionar como PWA:
+- Simplemente ejecuta en desarrollo (`npm run dev`) o despliega el build (`npm run build`).
+- El archivo `index.html` ya apunta al manifiesto y service worker de PWA:
+  ```html
+  <link rel="manifest" id="manifest-link" href="/public/manifest-pwa.json">
+  <script>
+    navigator.serviceWorker.register('/public/service-worker.js')
+  </script>
+  ```
+- Puedes instalar la app como PWA desde el navegador (opción "Instalar app" en Chrome, Edge, etc.).
+
+### 2. Crear tu propia extensión de Chrome
+
+Si quieres tu propia extensión personalizada:
+1. Cambia en `index.html` la línea del manifiesto por la de extensión:
+   ```html
+   <link rel="manifest" id="manifest-link" href="/public/manifest.json">
+   ```
+2. Ejecuta el build del proyecto:
+   ```bash
+   npm run build
+   ```
+3. Ve a `chrome://extensions/`, activa "Modo desarrollador" y haz clic en "Cargar descomprimida". Selecciona la carpeta `dist/` generada.
+
+### 3. Probar la extensión ya empaquetada
+
+Si solo quieres probar la extensión rápidamente:
+1. Descomprime el archivo `Latam-IA-MCP-client-chrome-v1.zip` que está en la raíz del proyecto.
+2. Ve a `chrome://extensions/`, activa "Modo desarrollador" y haz clic en "Cargar descomprimida". Selecciona la carpeta descomprimida.
 
 ---
+
+Cada vez que haces merge a `main`, un workflow de GitHub Actions despliega la app en GitHub Pages automáticamente.
+
+---
+
+## 📚 Citación
+
+Si este proyecto te resulta útil, siéntete libre de citarlo.
+
+```
+@misc{latam-ia-mcp-client,
+  title={Latam-IA MCP Client: Conector universal open source para LLMs y servidores MCP},
+  author={Christopher Orea},
+  year={2025},
+  howpublished={\url{https://github.com/christopherorea/Latam-IA-MCP-client}},
+  note={LinkedIn del autor: https://www.linkedin.com/in/chrisgalleta/}
+}
+```
 
 ¡Bienvenido a la revolución de la IA abierta y colaborativa! 🌎🤖
