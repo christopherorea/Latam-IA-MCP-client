@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ApiKeys, LLMProvider, LLMService } from './types';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -51,40 +51,19 @@ const App: React.FC = () => {
   // Langchain agent state remains here as it depends on both LLM service and MCP servers
   const [langchainAgent, setLangchainAgent] = useState<ReturnType<typeof createReactAgent> | null>(null);
   // Estado para almacenar la función de limpieza del agente/tools
-  const [agentCleanup, setAgentCleanup] = useState<McpServerCleanupFn | undefined>(undefined);
+  const [agentCleanup, setAgentCleanup] = useState<any>(undefined);
 
-  // Memo para crear una clave única que represente la configuración relevante para el agente
-  const agentConfigKey = useMemo(() => {
-    const key = JSON.stringify({
-      provider: activeLLMProvider,
-      apiKeys: apiKeys, // Incluir apiKeys directamente (useMemo hará comparación superficial o profunda si es posible)
-      connectedServers: stableConnectedServerConfig, // Usar el objeto memoizado de servers conectados del hook
-      // No incluimos serversLoadedFromStorage ni keysLoadedFromStorage aquí, ya que son condiciones de entrada al efecto, no parte de la config del agente
-    });
-    console.log('agentConfigKey memo re-evaluated:', key);
-    return key;
-  }, [activeLLMProvider, apiKeys, stableConnectedServerConfig]); // Depende de las partes relevantes de la config, incluyendo el valor del hook
+  // Unique config key for agent
+  const agentConfigKey = useMemo(() => JSON.stringify({
+    provider: activeLLMProvider,
+    apiKeys,
+    connectedServers: stableConnectedServerConfig,
+  }), [activeLLMProvider, apiKeys, stableConnectedServerConfig]);
 
-  // useEffect para inicializar el agente Langchain SOLO cuando cambia la config relevante
+  // Initialize Langchain agent when config changes
   useEffect(() => {
-    console.log('useEffect for agent initialization running...');
-    console.log('Dependencies:', {
-      agentConfigKey, // Dependencia principal
-      serversLoadedFromStorage,
-      keysLoadedFromStorage,
-      activeLLMService: !!activeLLMService, // Condición, no dependencia directa de la clave
-    });
-
-    // Logs individuales para depurar dependencias (ahora solo las condiciones de entrada)
-    console.log('Dep debug: serversLoadedFromStorage', serversLoadedFromStorage);
-    console.log('Dep debug: keysLoadedFromStorage', keysLoadedFromStorage);
-    console.log('Dep debug: activeLLMService', activeLLMService);
-    console.log('Dep debug: agentConfigKey', agentConfigKey);
-
-    let cancelled = false;
     // Las condiciones de carga y LLM activo siguen siendo necesarias
     if (!serversLoadedFromStorage || !keysLoadedFromStorage || !activeLLMService) {
-       console.log('NO INIT: Loading not complete or no active LLM service');
        setLangchainAgent(null);
        // Limpiar agente y cleanup si no se cumplen las condiciones
        setAgentCleanup(undefined);
@@ -94,14 +73,13 @@ const App: React.FC = () => {
     // Parsear la configuración stringificada desde la clave para verificar si hay servidores conectados
     const currentAgentConfig = JSON.parse(agentConfigKey);
     if (Object.keys(currentAgentConfig.connectedServers).length === 0) {
-      console.log('NO INIT: No connected MCP servers in memoized config');
       setLangchainAgent(null);
       // Limpiar agente y cleanup si no hay servers conectados
       setAgentCleanup(undefined);
       return;
     }
 
-    console.log('Conditions met, initializing agent...');
+    let cancelled = false;
     const initializeAgent = async () => {
       try {
         // Usamos la configuración parseada para obtener el LLM y las tools
@@ -118,7 +96,6 @@ const App: React.FC = () => {
             break;
         }
         if (!llmInstance) {
-          console.log('Agent initialization failed: No LLM instance');
           setLangchainAgent(null);
           setAgentCleanup(undefined);
           return;
@@ -129,7 +106,6 @@ const App: React.FC = () => {
           { logLevel: 'info' }
         );
         if (cancelled) {
-           console.log('Agent initialization cancelled');
            // Limpiar si fue cancelado
            if (toolsAndCleanup.cleanup) {
              toolsAndCleanup.cleanup();
@@ -147,13 +123,7 @@ const App: React.FC = () => {
         
         // Almacenar la función de limpieza y el agente
         setAgentCleanup(() => toolsAndCleanup.cleanup);
-        setLangchainAgent(prev => {
-          // Siempre creamos un nuevo agente si la clave de configuración cambió y las condiciones se cumplen
-          console.log('Creating new Langchain agent');
-          const agent = createReactAgent({ llm: llmInstance, tools });
-          return agent;
-        });
-        console.log('Agent initialization async task finished.');
+        setLangchainAgent(() => createReactAgent({ llm: llmInstance, tools }));
       } catch (error) {
         console.error('Error during agent initialization:', error);
         setLangchainAgent(null);
@@ -163,11 +133,9 @@ const App: React.FC = () => {
     initializeAgent();
 
     return () => {
-      console.log('Agent initialization effect cleanup running...');
       cancelled = true;
       // Llamar a la función de limpieza si existe
       if (agentCleanup) {
-        console.log('Calling agent cleanup...');
         agentCleanup();
       }
       setLangchainAgent(null);
@@ -176,23 +144,15 @@ const App: React.FC = () => {
   // eslint-disable-next-line
   }, [agentConfigKey, serversLoadedFromStorage, keysLoadedFromStorage, activeLLMService]); // Dependemos de la clave de configuración y las condiciones de carga/LLM
 
-  // Efecto para llamar a la limpieza final cuando el componente se desmonte
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      console.log('App cleanup running...');
-      if (agentCleanup) {
-        console.log('Calling final agent cleanup...');
-        agentCleanup();
-      }
-      // Asegurarse de llamar también a la limpieza de useMcpServers si existe
-      if (mcpCleanup) {
-         console.log('Calling MCP servers cleanup...');
-         mcpCleanup();
-      }
+      if (agentCleanup) agentCleanup();
+      if (mcpCleanup) mcpCleanup();
     };
   }, [agentCleanup, mcpCleanup]); // Depende de las funciones de limpieza
 
-  // useEffect for loading API keys (now correctly uses keysLoadedFromStorage)
+  // Load API keys from localStorage
   useEffect(() => {
     try {
       const storedKeys = localStorage.getItem(LOCAL_STORAGE_API_KEYS);
@@ -223,7 +183,7 @@ const App: React.FC = () => {
     }
   }, []); // Empty dependency array for initial load
 
-  // useEffect for saving API keys (now correctly uses keysLoadedFromStorage)
+  // Save API keys to localStorage
   useEffect(() => {
     if (keysLoadedFromStorage) { // Only save if keys have been loaded from storage
       try {
