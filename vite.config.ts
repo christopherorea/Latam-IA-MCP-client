@@ -7,7 +7,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 export default defineConfig(() => {
     return {
-      base: '/Latam-IA-MCP-client/', // base para GitHub Pages
+      base: './', // Ajustado para Chrome Extension
       define: {
         'global': 'window',
       },
