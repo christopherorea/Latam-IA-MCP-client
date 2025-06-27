@@ -98,17 +98,7 @@ const LLMChat: React.FC<LLMChatProps> = ({
 
   // Add logging for debugging input disabled state
   useEffect(() => {
-    console.log('LLMChat state/props update:');
-    console.log('  keysLoadedFromStorage:', keysLoadedFromStorage);
-    console.log('  activeProvider:', activeProvider);
-    console.log('  apiKeys:', apiKeys); // Log the apiKeys object
-    console.log('  isCurrentProviderEffectivelyAvailable():', isCurrentProviderEffectivelyAvailable());
-    console.log('  langchainAgent present:', !!langchainAgent); // Log boolean presence
-    console.log('  mcpServers status:', mcpServers.map(server => server.status));
-    console.log('  isLoading:', isLoading);
-    console.log('  input is empty:', !input.trim());
     const isSendButtonDisabled = isLoading || !input.trim() || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable() && mcpServers.every(server => server.status !== 'connected'));
-    console.log('  isSendButtonDisabled (determines input disabled state):', isSendButtonDisabled);
   }, [isLoading, input, keysLoadedFromStorage, activeProvider, apiKeys, isCurrentProviderEffectivelyAvailable, langchainAgent, mcpServers]);
 
 
