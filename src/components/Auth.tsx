@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { auth } from '../services/firebase';
+import * as firebaseui from 'firebaseui';
+import 'firebaseui/dist/firebaseui.css';
+import { auth } from '../../services/firebase';
 
 
 const uiConfig = {
@@ -19,8 +21,8 @@ const Auth: React.FC = () => {
 
   useEffect(() => {
     
-    if (window.firebaseui) {
-      const ui = window.firebaseui.auth.AuthUI.getInstance() || new window.firebaseui.auth.AuthUI(auth);
+    if (firebaseui) {
+      const ui = firebaseui.auth.AuthUI.getInstance() || new firebaseui.auth.AuthUI(auth);
       if (uiContainerRef.current) {
         ui.start(uiContainerRef.current, uiConfig);
       }
