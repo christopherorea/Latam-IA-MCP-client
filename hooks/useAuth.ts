@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-import { FIREBASE_CONFIG } from '../constants';
 import { AppUser } from '../types';
-
-if (!firebase.apps.length) {
-  firebase.initializeApp(FIREBASE_CONFIG);
-}
-const auth = firebase.auth();
+import { auth } from '../services/firebase';
 
 interface UseAuthReturn {
   user: AppUser | null;

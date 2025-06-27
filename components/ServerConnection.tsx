@@ -111,6 +111,7 @@ const ServerConnection: React.FC<ServerConnectionProps> = ({ servers, onAddServe
             onChange={(e) => setNewServerBearerToken(e.target.value)}
             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-200 focus:ring-1 focus:ring-sky-500 focus:border-sky-500"
             placeholder="Enter optional bearer token"
+            autoComplete="off"
           />
         </div>
         {addServerError && <p className="text-red-400 text-xs mb-3">{addServerError}</p>}

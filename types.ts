@@ -1,6 +1,6 @@
-import firebase from 'firebase/compat/app'; 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { User } from 'firebase/auth'; // Import User type from firebase/auth
 
 export interface ApiKeys {
   openai: string;
@@ -11,7 +11,7 @@ export interface ApiKeys {
 
 export type LLMProvider = 'openai' | 'claude' | 'gemini';
 
-export interface AppUser extends firebase.User {}
+export interface AppUser extends User {}
 
 export interface ChatMessage {
   id: string;

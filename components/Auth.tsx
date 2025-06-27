@@ -1,15 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { auth } from '../services/firebase';
-import firebase from 'firebase/compat/app'; 
 
 
 const uiConfig = {
   signInFlow: 'popup',
   signInOptions: [
-    firebase.auth.EmailAuthProvider.PROVIDER_ID,
-    firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-    
-    
+    auth.EmailAuthProvider.PROVIDER_ID,
+    auth.GoogleAuthProvider.PROVIDER_ID,
   ],
   callbacks: {
     
