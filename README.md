@@ -164,4 +164,27 @@ Este proyecto es open source bajo licencia MIT.
 
 ---
 
+## 📦 Como extensión de Chrome
+
+Este proyecto también puede ser construido y cargado como una extensión de navegador (actualmente probado en Chrome).
+
+1.  **Asegúrate de tener los iconos:**
+    - Coloca tus archivos de icono (`icon-16.png`, `icon-32.png`, `icon-48.png`, `icon-128.png`) dentro de la carpeta `public/icons/`. Si solo tienes uno, asegúrate de que el `manifest.json` apunte a él para todos los tamaños.
+2.  **Construye el proyecto:**
+    - Abre tu terminal en la raíz del proyecto.
+    - Ejecuta el comando de build de Vite:
+      ```bash
+      npm run build
+      ```
+    - Esto creará la carpeta `dist/` con todos los archivos necesarios para la extensión.
+3.  **Carga la extensión en Chrome:**
+    - Abre Chrome y ve a `chrome://extensions/`.
+    - Activa el "Modo desarrollador" (Developer mode) en la esquina superior derecha.
+    - Haz clic en el botón "Cargar descomprimida" (Load unpacked).
+    - Selecciona la carpeta `dist/` que se generó en el paso anterior.
+4.  **Usa la extensión:**
+    - Busca el icono de la extensión en la barra de herramientas de Chrome y haz clic en él para abrir el popup.
+
+---
+
 ¡Bienvenido a la revolución de la IA abierta y colaborativa! 🌎🤖
