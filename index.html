@@ -38,13 +38,9 @@
       /* The App's direct child div should handle its own min-height via Tailwind (e.g., min-h-screen) */
     </style>
 
-<link rel="manifest" id="manifest-link" href="./assets/manifest-pwa-Clq4mL4-.json">
+<link rel="manifest" id="manifest-link" href="./assets/manifest-pwa-Clq4mL4-.json"> <!-- manifest.json para chrome-extention y manifest-pwa.json para pwa -->
 <meta name="theme-color" content="#1a202c">
 <script>
-  // Cambia el manifest dinámicamente según el modo (PWA o extensión)
-  // Por defecto usa manifest-pwa.json
-  // Si quieres usar el de extensión, cambia el href manualmente o con build script
-  // document.getElementById('manifest-link').setAttribute('href', '/public/manifest-extension.json');
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
       navigator.serviceWorker.register('/public/service-worker.js').then(function(registration) {
