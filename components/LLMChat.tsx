@@ -101,7 +101,13 @@ const LLMChat: React.FC<LLMChatProps> = ({
                   className={`max-w-xs md:max-w-md lg:max-w-lg px-3.5 py-2.5 shadow ${getBubbleClasses(msg.sender)}`}
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                 >
-                  <p className="text-sm leading-relaxed">{msg.text}</p>
+                  <p className="text-sm leading-relaxed">
+                    {msg.sender === 'bot' && msg.text === '' ? (
+                      <span className="inline-block animate-pulse text-sky-300">...</span>
+                    ) : (
+                      msg.text
+                    )}
+                  </p>
                   {msg.sender !== 'system' && (
                     <p className={`text-xs mt-1.5 ${msg.sender === 'user' ? 'text-sky-200/80' : 'text-gray-400/80'} text-right`}>
                       {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
