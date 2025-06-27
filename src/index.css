@@ -1,2 +1,6 @@
 @import "tailwindcss";
 @tailwind utilities;
+
+body {
+  min-width: 400px; /* Adjust this value as needed */
+}
