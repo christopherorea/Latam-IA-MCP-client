@@ -42,84 +42,155 @@ const App: React.FC = () => {
     handleAddServer,
     handleRemoveServer,
     handleConnectToServer,
-    mcpCleanup,
+    mcpCleanup, // Descomentado: Necesitamos exponerlo aquí para la limpieza final
     mcpServerConfig,
+    // connectedServersVersion, // Ya no necesitamos importar este valor
+    stableConnectedServerConfig, // <-- Add this line
   } = useMcpServers({});
 
   // Langchain agent state remains here as it depends on both LLM service and MCP servers
   const [langchainAgent, setLangchainAgent] = useState<ReturnType<typeof createReactAgent> | null>(null);
+  // Estado para almacenar la función de limpieza del agente/tools
+  const [agentCleanup, setAgentCleanup] = useState<McpServerCleanupFn | undefined>(undefined);
 
-  // Memo para evitar que el objeto mcpServerConfig cambie de referencia en cada render
-  const stableMcpConfig = useMemo(() => JSON.stringify(mcpServerConfig), [mcpServerConfig]);
+  // Memo para crear una clave única que represente la configuración relevante para el agente
+  const agentConfigKey = useMemo(() => {
+    const key = JSON.stringify({
+      provider: activeLLMProvider,
+      apiKeys: apiKeys, // Incluir apiKeys directamente (useMemo hará comparación superficial o profunda si es posible)
+      connectedServers: stableConnectedServerConfig, // Usar el objeto memoizado de servers conectados del hook
+      // No incluimos serversLoadedFromStorage ni keysLoadedFromStorage aquí, ya que son condiciones de entrada al efecto, no parte de la config del agente
+    });
+    console.log('agentConfigKey memo re-evaluated:', key);
+    return key;
+  }, [activeLLMProvider, apiKeys, stableConnectedServerConfig]); // Depende de las partes relevantes de la config, incluyendo el valor del hook
 
   // useEffect para inicializar el agente Langchain SOLO cuando cambia la config relevante
   useEffect(() => {
+    console.log('useEffect for agent initialization running...');
+    console.log('Dependencies:', {
+      agentConfigKey, // Dependencia principal
+      serversLoadedFromStorage,
+      keysLoadedFromStorage,
+      activeLLMService: !!activeLLMService, // Condición, no dependencia directa de la clave
+    });
+
+    // Logs individuales para depurar dependencias (ahora solo las condiciones de entrada)
+    console.log('Dep debug: serversLoadedFromStorage', serversLoadedFromStorage);
+    console.log('Dep debug: keysLoadedFromStorage', keysLoadedFromStorage);
+    console.log('Dep debug: activeLLMService', activeLLMService);
+    console.log('Dep debug: agentConfigKey', agentConfigKey);
+
     let cancelled = false;
-    // Evita inicializar si ya hay un agente válido y la config no cambió realmente
-    if (!serversLoadedFromStorage || !keysLoadedFromStorage) return;
-    // Solo inicializar si hay servidores conectados Y tools disponibles
-    const connectedServers = mcpServers.filter(s => s.status === 'connected');
-    if (connectedServers.length === 0) {
+    // Las condiciones de carga y LLM activo siguen siendo necesarias
+    if (!serversLoadedFromStorage || !keysLoadedFromStorage || !activeLLMService) {
+       console.log('NO INIT: Loading not complete or no active LLM service');
+       setLangchainAgent(null);
+       // Limpiar agente y cleanup si no se cumplen las condiciones
+       setAgentCleanup(undefined);
+       return;
+    }
+
+    // Parsear la configuración stringificada desde la clave para verificar si hay servidores conectados
+    const currentAgentConfig = JSON.parse(agentConfigKey);
+    if (Object.keys(currentAgentConfig.connectedServers).length === 0) {
+      console.log('NO INIT: No connected MCP servers in memoized config');
       setLangchainAgent(null);
+      // Limpiar agente y cleanup si no hay servers conectados
+      setAgentCleanup(undefined);
       return;
     }
-    if (!activeLLMService) {
-      setLangchainAgent(null);
-      return;
-    }
-    // Solo inicializar si la config de servers cambió realmente
-    const configHash = stableMcpConfig;
-    let lastConfigHash = useRef('');
-    if (lastConfigHash.current === configHash) return;
-    lastConfigHash.current = configHash;
+
+    console.log('Conditions met, initializing agent...');
     const initializeAgent = async () => {
       try {
+        // Usamos la configuración parseada para obtener el LLM y las tools
         let llmInstance = null;
-        switch (activeLLMProvider) {
+        switch (currentAgentConfig.provider) {
           case 'openai':
-            if (apiKeys.openai) llmInstance = new ChatOpenAI({ apiKey: apiKeys.openai });
+            if (currentAgentConfig.apiKeys.openai) llmInstance = new ChatOpenAI({ apiKey: currentAgentConfig.apiKeys.openai });
             break;
           case 'claude':
-            if (apiKeys.claude) llmInstance = new ChatAnthropic({ apiKey: apiKeys.claude });
+            if (currentAgentConfig.apiKeys.claude) llmInstance = new ChatAnthropic({ apiKey: currentAgentConfig.apiKeys.claude });
             break;
           case 'gemini':
-            if (apiKeys.gemini) llmInstance = new ChatGoogleGenerativeAI({ apiKey: apiKeys.gemini, model: "gemini-2.5-flash-preview-04-17" });
+            if (currentAgentConfig.apiKeys.gemini) llmInstance = new ChatGoogleGenerativeAI({ apiKey: currentAgentConfig.apiKeys.gemini, model: "gemini-2.5-flash-preview-04-17" });
             break;
         }
         if (!llmInstance) {
+          console.log('Agent initialization failed: No LLM instance');
           setLangchainAgent(null);
+          setAgentCleanup(undefined);
           return;
         }
+        // Usamos el objeto memoizado de servers conectados desde la clave para convertir a tools
         const toolsAndCleanup = await convertMcpToLangchainTools(
-          mcpServerConfig,
+          currentAgentConfig.connectedServers, // Usar el objeto parseado desde la clave
           { logLevel: 'info' }
         );
-        if (cancelled) return;
+        if (cancelled) {
+           console.log('Agent initialization cancelled');
+           // Limpiar si fue cancelado
+           if (toolsAndCleanup.cleanup) {
+             toolsAndCleanup.cleanup();
+           }
+           setAgentCleanup(undefined);
+           return;
+        }
         const tools = toolsAndCleanup.tools;
+        // DEBUG: Mostrar las tools disponibles
+        if (Array.isArray(tools)) {
+          console.log('Langchain tools disponibles:', tools.map(t => t.name || t));
+        } else {
+          console.log('Langchain tools disponibles:', tools);
+        }
+        
+        // Almacenar la función de limpieza y el agente
+        setAgentCleanup(() => toolsAndCleanup.cleanup);
         setLangchainAgent(prev => {
-          if (
-            prev &&
-            prev.llm &&
-            prev.tools &&
-            prev.llm.constructor === llmInstance.constructor &&
-            JSON.stringify(prev.tools) === JSON.stringify(tools)
-          ) {
-            return prev;
-          }
+          // Siempre creamos un nuevo agente si la clave de configuración cambió y las condiciones se cumplen
+          console.log('Creating new Langchain agent');
           const agent = createReactAgent({ llm: llmInstance, tools });
           return agent;
         });
+        console.log('Agent initialization async task finished.');
       } catch (error) {
+        console.error('Error during agent initialization:', error);
         setLangchainAgent(null);
+        setAgentCleanup(undefined);
       }
     };
     initializeAgent();
+
     return () => {
+      console.log('Agent initialization effect cleanup running...');
       cancelled = true;
+      // Llamar a la función de limpieza si existe
+      if (agentCleanup) {
+        console.log('Calling agent cleanup...');
+        agentCleanup();
+      }
       setLangchainAgent(null);
+      setAgentCleanup(undefined);
     };
   // eslint-disable-next-line
-  }, [activeLLMProvider, apiKeys, activeLLMService, stableMcpConfig, serversLoadedFromStorage, keysLoadedFromStorage]);
+  }, [agentConfigKey, serversLoadedFromStorage, keysLoadedFromStorage, activeLLMService]); // Dependemos de la clave de configuración y las condiciones de carga/LLM
+
+  // Efecto para llamar a la limpieza final cuando el componente se desmonte
+  useEffect(() => {
+    return () => {
+      console.log('App cleanup running...');
+      if (agentCleanup) {
+        console.log('Calling final agent cleanup...');
+        agentCleanup();
+      }
+      // Asegurarse de llamar también a la limpieza de useMcpServers si existe
+      if (mcpCleanup) {
+         console.log('Calling MCP servers cleanup...');
+         mcpCleanup();
+      }
+    };
+  }, [agentCleanup, mcpCleanup]); // Depende de las funciones de limpieza
 
   // useEffect for loading API keys (now correctly uses keysLoadedFromStorage)
   useEffect(() => {
@@ -162,7 +233,7 @@ const App: React.FC = () => {
         console.error("Error saving API keys to localStorage:", error);
       }
     }
-  }, [apiKeys, keysLoadedFromStorage]); // Add keysLoadedFromStorage to dependency array
+  }, [apiKeys, keysLoadedFromStorage]);
 
   const handleApiKeysChange = (newKeys: ApiKeys) => {
     setApiKeys(newKeys); // Update the apiKeys state
@@ -233,7 +304,7 @@ const App: React.FC = () => {
                 activeProvider={activeLLMProvider}
                 mcpServers={mcpServers}
                 keysLoadedFromStorage={keysLoadedFromStorage}
-                langchainAgent={langchainAgent}
+                langchainAgent={langchainAgent} // Pass the agent state directly
                 activeLLMService={activeLLMService}
               />
             )}

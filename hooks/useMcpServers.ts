@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { MCPServer, MCPConnectionStatus } from '../types';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { convertMcpToLangchainTools, McpServerCleanupFn } from "@h1deya/langchain-mcp-tools";
+import { McpServerCleanupFn } from "@h1deya/langchain-mcp-tools";
 
 const LOCAL_STORAGE_MCP_SERVERS = 'mcpLlmClientMcpServers';
 
@@ -18,26 +18,30 @@ interface UseMcpServersReturn {
   handleConnectToServer: (serverId: string) => Promise<void>;
   mcpCleanup: McpServerCleanupFn | undefined;
   mcpServerConfig: Record<string, { url: string; bearerToken?: string }>;
+  connectedServersVersion: number; // Nuevo estado expuesto
 }
 
 export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
   const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
   const [serversLoadedFromStorage, setServersLoadedFromStorage] = useState<boolean>(false);
   const [mcpCleanup, setMcpCleanup] = useState<McpServerCleanupFn | undefined>(undefined);
+  // Nuevo estado para rastrear cambios en servidores conectados
+  const [connectedServersVersion, setConnectedServersVersion] = useState(0);
 
   // Helper function to update servers state and log
+  // Simplificamos esta función para que solo actualice el estado mcpServers
   const logSetMcpServers = useCallback((updater: MCPServer[] | ((prevState: MCPServer[]) => MCPServer[])) => {
     if (typeof updater === 'function') {
       setMcpServers(prevState => {
         const newState = updater(prevState);
-        // console.log("MCP Servers updated:", newState);
+        // console.log('logSetMcpServers (function updater) - New State:', newState); // Opcional: mantener logs si son útiles
         return newState;
       });
     } else {
+      // console.log('logSetMcpServers (direct updater) - New State:', updater); // Opcional: mantener logs si son útiles
       setMcpServers(updater);
-      // console.log("MCP Servers set:", updater);
     }
-  }, []);
+  }, []); // Dependencias vacías: []
 
   // Effect to load servers from localStorage
   useEffect(() => {
@@ -47,6 +51,7 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
         const loadedServers = JSON.parse(storedServers) as MCPServer[];
         if (loadedServers && Array.isArray(loadedServers)) {
           // Reset status and client/transport on load
+          // Asegurarse de que esta actualización use logSetMcpServers para que el useEffect de version reaccione
           logSetMcpServers(loadedServers.map(server => ({
             ...server,
             status: 'idle',
@@ -64,7 +69,7 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
     } finally {
       setServersLoadedFromStorage(true);
     }
-  }, [logSetMcpServers]); // Add logSetMcpServers to dependency array
+  }, [logSetMcpServers]); // Depende de logSetMcpServers
 
   // Effect to save servers to localStorage
   useEffect(() => {
@@ -78,7 +83,7 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
         console.error("Error saving MCP servers to localStorage:", error);
       }
     }
-  }, [mcpServers, serversLoadedFromStorage]); // Add serversLoadedFromStorage to dependency array
+  }, [mcpServers, serversLoadedFromStorage]); // Depende de mcpServers y serversLoadedFromStorage
 
   // Handlers for adding, removing, and connecting to servers
   const handleAddServer = useCallback((name: string, url: string, bearerToken?: string) => {
@@ -97,7 +102,7 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
       transport: undefined,
     };
     logSetMcpServers(prev => [...prev, newServer]);
-  }, [logSetMcpServers]);
+  }, [logSetMcpServers]); // Depende de logSetMcpServers
 
   const handleRemoveServer = useCallback((serverId: string) => {
     logSetMcpServers(prev => {
@@ -108,13 +113,13 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
       const updatedServers = prev.filter(server => server.id !== serverId);
       return updatedServers;
     });
-  }, [logSetMcpServers]);
+  }, [logSetMcpServers]); // Depende de logSetMcpServers
 
   const updateServerStatus = useCallback((serverId: string, status: MCPConnectionStatus, message: string) => {
     logSetMcpServers(prev => prev.map(server =>
       server.id === serverId ? { ...server, status, statusMessage: message } : server
     ));
-  }, [logSetMcpServers]);
+  }, [logSetMcpServers]); // Depende de logSetMcpServers
 
   const handleConnectToServer = useCallback(async (serverId: string) => {
     const server = mcpServers.find(s => s.id === serverId);
@@ -144,6 +149,7 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
         }
       );
 
+      // Actualizar el transporte usando logSetMcpServers
       logSetMcpServers(prev => prev.map(s =>
         s.id === serverId ? { ...s, transport: directTransport } : s
       ));
@@ -157,55 +163,61 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
       let message = `Failed to connect: ${error.message || 'Unknown error'}.`;
       updateServerStatus(serverId, 'error', message);
     }
-  }, [mcpServers, updateServerStatus, logSetMcpServers]); // Add dependencies
+  }, [mcpServers, updateServerStatus, logSetMcpServers]); // Depende de mcpServers, updateServerStatus, logSetMcpServers
 
   // Create MCP server config for Langchain agent initialization
-  const mcpServerConfig = mcpServers.reduce((acc, server) => {
-    acc[server.name] = {
-      url: server.url,
-      bearerToken: server.bearerToken,
-    };
-    return acc;
-  }, {} as Record<string, { url: string; bearerToken?: string }>);
+  const mcpServerConfig = useMemo(() => {
+     return mcpServers.reduce((acc, server) => {
+      acc[server.name] = {
+        url: server.url,
+        bearerToken: server.bearerToken,
+      };
+      return acc;
+    }, {} as Record<string, { url: string; bearerToken?: string }>);
+  }, [mcpServers]); // Depende de mcpServers
 
-  // Effect to initialize Langchain agent and MCP tools (moved from App.tsx)
-  // Usar un hash/memo para evitar loops y solo depender de la config de servers
-  const stableConfig = useMemo(() => JSON.stringify(mcpServerConfig), [mcpServerConfig]);
-  const lastConfigRef = useRef('');
+  // Memo para obtener una representación estable de la configuración de los servidores CONECTADOS
+  const stableConnectedServerConfigInternal = useMemo(() => {
+    const config = mcpServers.filter(s => s.status === 'connected').reduce((acc, server) => {
+      acc[server.name] = {
+        url: server.url,
+        bearerToken: server.bearerToken,
+      };
+      return acc;
+    }, {} as Record<string, { url: string; bearerToken?: string }>);
+    console.log('useMcpServers: stableConnectedServerConfigInternal memo re-evaluated:', JSON.stringify(config));
+    return config; // Return the object, not the stringified version
+  }, [mcpServers]); // Depende de mcpServers
+
+  // Nuevo useEffect para actualizar connectedServersVersion cuando cambie la configuración de servers conectados
+  const prevStableConnectedServerConfigInternalRef = useRef(stableConnectedServerConfigInternal);
   useEffect(() => {
-    let cancelled = false;
-    if (lastConfigRef.current === stableConfig) return;
-    lastConfigRef.current = stableConfig;
-    const initializeAgent = async () => {
-      if (mcpServers.length === 0) {
-        if (mcpCleanup) {
-          await mcpCleanup();
-          setMcpCleanup(undefined);
-        }
-        return;
+    // Deep comparison might be needed here if the object structure is complex,
+    // but for this simple structure, a shallow comparison might suffice if the object reference changes.
+    // A safer approach is to stringify for comparison if deep changes matter.
+    const currentConfigString = JSON.stringify(stableConnectedServerConfigInternal);
+    const prevConfigString = JSON.stringify(prevStableConnectedServerConfigInternalRef.current);
+
+    if (currentConfigString !== prevConfigString) {
+      console.log('useMcpServers: stableConnectedServerConfigInternal changed. Incrementing connectedServersVersion.');
+      setConnectedServersVersion(prev => prev + 1);
+      prevStableConnectedServerConfigInternalRef.current = stableConnectedServerConfigInternal;
+    } else {
+       console.log('useMcpServers: stableConnectedServerConfigInternal did not change. connectedServersVersion not incremented.');
+    }
+  }, [stableConnectedServerConfigInternal]); // Depende del memo object
+
+  // Efecto para conectar automáticamente a los servidores MCP en estado 'idle' tras cargar desde localStorage
+  useEffect(() => {
+    if (!serversLoadedFromStorage) return;
+    // Solo intentamos conectar los que estén en 'idle'
+    mcpServers.forEach((server) => {
+      if (server.status === 'idle') {
+        // Llamar a handleConnectToServer para cada uno
+        handleConnectToServer(server.id);
       }
-      try {
-        const toolsAndCleanup = await convertMcpToLangchainTools(
-          mcpServerConfig,
-          { logLevel: 'info' }
-        );
-        if (cancelled) return;
-        setMcpCleanup(() => toolsAndCleanup.cleanup);
-        // console.log("MCP tools and cleanup initialized.");
-      } catch (error) {
-        if (mcpCleanup) {
-          mcpCleanup();
-          setMcpCleanup(undefined);
-        }
-      }
-    };
-    initializeAgent();
-    return () => {
-      cancelled = true;
-      // No cleanup aquí, solo si cambia la config
-    };
-    // eslint-disable-next-line
-  }, [stableConfig]);
+    });
+  }, [serversLoadedFromStorage]); // Depende de serversLoadedFromStorage
 
   return {
     mcpServers,
@@ -213,7 +225,9 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
     handleAddServer,
     handleRemoveServer,
     handleConnectToServer,
-    mcpCleanup, // Expose cleanup for App.tsx to pass to Langchain effect
-    mcpServerConfig, // Expose config for App.tsx to pass to Langchain effect
+    mcpCleanup,
+    mcpServerConfig,
+    connectedServersVersion, // Exponer el nuevo valor
+    stableConnectedServerConfig: stableConnectedServerConfigInternal, // Exponer el objeto memoizado
   };
 };

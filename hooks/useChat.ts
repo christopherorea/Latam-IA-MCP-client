@@ -44,7 +44,14 @@ export const useChat = ({
   // Effect to initialize chat messages based on availability
   // Solo reiniciar mensajes si cambia el "tipo" de chat (provider <-> langchainAgent)
   const lastChatTypeRef = useRef<string | null>(null);
+  // Calcula el número de servidores conectados para usarlo como dependencia
+  const connectedServersSignature = mcpServers
+    .filter(s => s.status === 'connected')
+    .map(s => s.id || s.url || JSON.stringify(s))
+    .join(',');
+
   useEffect(() => {
+    console.log(connectedServersSignature)
     if (!keysLoadedFromStorage) return;
 
     const chatType = langchainAgent ? 'langchain' : activeProvider;
@@ -79,7 +86,7 @@ export const useChat = ({
         }]);
       }
     }
-  }, [activeProvider, apiKeys, keysLoadedFromStorage, langchainAgent, activeLLMService]); // Add activeLLMService to dependency array
+  }, [activeProvider, apiKeys, activeLLMService, keysLoadedFromStorage, langchainAgent, connectedServersSignature]); // Usar el conteo de servers conectados como dependencia
 
   // This function will contain the core chat logic
   const handleSend = async () => {
@@ -138,135 +145,88 @@ export const useChat = ({
           errorOccurred = true;
         }
 
-      } else {
-        // Fallback to existing logic if Langchain agent is not available
-        console.log("Langchain agent not available, falling back to direct connection or individual provider...");
-        const connectedServer = mcpServers.find(server => server.status === 'connected');
+      } else if (activeLLMService && activeLLMService.isAvailable(apiKeys[activeProvider])) { // Use activeLLMService
+        // Use the active LLM service
+        // Check if streaming is supported and use it if available
+        if (activeLLMService.generateTextStream) {
+          // Handle streaming response
+          isStreaming = true; // Set streaming flag
+          setMessages(prev => [...prev, {
+            id: `bot-${Date.now()}`,
+            text: '', // Start with empty text
+            sender: 'bot',
+            timestamp: new Date(),
+            provider: activeProvider
+          }]);
 
-        if (connectedServer && connectedServer.client) {
-          // ...existing MCP server interaction logic (remains the same)...
           try {
-            const response = await (connectedServer.client as any).request('chat/message', { text: currentInput });
-            const responseResult = response as any;
-
-            if (responseResult && responseResult.toolCall) {
-              // ...existing tool call handling...
-              setMessages(prev => [...prev, {
-                id: `toolcall-${Date.now()}`,
-                text: `Ejecutando herramienta: ${responseResult.toolCall.name}...`,
-                sender: 'system',
-                timestamp: new Date(),
-                provider: activeProvider
-              }]);
-
-              try {
-                const toolResultResponse = await connectedServer.client.callTool({
-                  name: responseResult.toolCall.name,
-                  arguments: responseResult.toolCall.arguments
-                });
-                botResponseText = (toolResultResponse as any)?.text || `Tool ${responseResult.toolCall.name} executed successfully.`;
-              } catch (toolError: any) {
-                console.error(`Error executing tool ${responseResult.toolCall.name}:`, toolError);
-                botResponseText = `Error executing tool ${responseResult.toolCall.name}: ${toolError.message || 'Unknown error'}`;
-                errorOccurred = true;
-              }
-
-            } else if (responseResult && responseResult.text) {
-              botResponseText = responseResult.text;
-            } else {
-              console.warn("MCP server response did not contain a text or toolCall property:", response);
-              botResponseText = "Received an unexpected response from the MCP server.";
-              errorOccurred = true;
-            }
-          } catch (error: any) {
-            console.error("Error interacting with MCP server:", error);
-            botResponseText = `Error from MCP server: ${error.message || 'Unknown error'}`;
-            errorOccurred = true;
-          }
-
-        } else if (activeLLMService && activeLLMService.isAvailable(apiKeys[activeProvider])) { // Use activeLLMService
-          // Use the active LLM service
-          // Check if streaming is supported and use it if available
-          if (activeLLMService.generateTextStream) {
-            // Handle streaming response
-            isStreaming = true; // Set streaming flag
-            setMessages(prev => [...prev, {
-              id: `bot-${Date.now()}`,
-              text: '', // Start with empty text
-              sender: 'bot',
-              timestamp: new Date(),
-              provider: activeProvider
-            }]);
-
-            try {
-                await activeLLMService.generateTextStream(
-                  currentInput,
-                  apiKeys[activeProvider],
-                  (chunk) => {
-                    // Update the last message with the new chunk
-                    setMessages(prev => {
-                      const lastMessage = { ...prev[prev.length - 1] };
-                      lastMessage.text += chunk;
-                      return [...prev.slice(0, -1), lastMessage];
-                    });
-                  },
-                  () => {
-                    // On complete
-                    setIsLoading(false);
-                    scrollToBottom();
-                  },
-                  (errorMsg) => {
-                    // On error
-                    setMessages(prev => {
-                      const lastMessage = { ...prev[prev.length - 1] };
-                      lastMessage.text = `Error: ${errorMsg}`;
-                      lastMessage.sender = 'error';
-                      return [...prev.slice(0, -1), lastMessage];
-                    });
-                    setIsLoading(false);
-                    errorOccurred = true; // Mark as error
-                    scrollToBottom();
-                  }
-                );
-            } catch (error: any) {
-                console.error(`Streaming chat error with ${activeProvider}:`, error);
-                // If an error occurs during streaming setup or before the first chunk
-                setMessages(prev => {
+              await activeLLMService.generateTextStream(
+                currentInput,
+                apiKeys[activeProvider],
+                (chunk) => {
+                  // Update the last message with the new chunk
+                  setMessages(prev => {
                     const lastMessage = { ...prev[prev.length - 1] };
-                    lastMessage.text = `Error initiating streaming: ${error.message || 'Unknown error'}`;
+                    lastMessage.text += chunk;
+                    return [...prev.slice(0, -1), lastMessage];
+                  });
+                },
+                () => {
+                  // On complete
+                  setIsLoading(false);
+                  scrollToBottom();
+                },
+                (errorMsg) => {
+                  // On error
+                  setMessages(prev => {
+                    const lastMessage = { ...prev[prev.length - 1] };
+                    lastMessage.text = `Error: ${errorMsg}`;
                     lastMessage.sender = 'error';
                     return [...prev.slice(0, -1), lastMessage];
-                });
-                setIsLoading(false);
-                errorOccurred = true; // Mark as error
-                scrollToBottom();
-            }
-
-          } else {
-            // Fallback to non-streaming if not supported or available
-            try {
-                botResponseText = await activeLLMService.generateText(currentInput, apiKeys[activeProvider]);
-
-                // The service's generateText should ideally throw on error or return a specific error structure.
-                // For now, keep the basic check, but ideally, this would be more robust based on service implementation.
-                if (botResponseText.startsWith("Error from") ||
-                  botResponseText.includes("API is not available") ||
-                  botResponseText.includes("API client could not be initialized") ||
-                  botResponseText.includes("not configured") ||
-                  botResponseText.includes("not fully implemented") ||
-                  botResponseText.includes("placeholder")) {
-                  errorOccurred = true;
+                  });
+                  setIsLoading(false);
+                  errorOccurred = true; // Mark as error
+                  scrollToBottom();
                 }
-            } catch (error: any) {
-                console.error(`Non-streaming chat error with ${activeProvider}:`, error);
-                botResponseText = `An unexpected error occurred with ${activeProvider}: ${error.message || 'Unknown error'}.`;
-                errorOccurred = true;
-            }
+              );
+          } catch (error: any) {
+              console.error(`Streaming chat error with ${activeProvider}:`, error);
+              // If an error occurs during streaming setup or before the first chunk
+              setMessages(prev => {
+                  const lastMessage = { ...prev[prev.length - 1] };
+                  lastMessage.text = `Error initiating streaming: ${error.message || 'Unknown error'}`;
+                  lastMessage.sender = 'error';
+                  return [...prev.slice(0, -1), lastMessage];
+              });
+              setIsLoading(false);
+              errorOccurred = true; // Mark as error
+              scrollToBottom();
           }
+
         } else {
-          botResponseText = "No LLM provider configured and no MCP server connected.";
-          errorOccurred = true;
+          // Fallback to non-streaming if not supported or available
+          try {
+              botResponseText = await activeLLMService.generateText(currentInput, apiKeys[activeProvider]);
+
+              // The service's generateText should ideally throw on error or return a specific error structure.
+              // For now, keep the basic check, but ideally, this would be more robust based on service implementation.
+              if (botResponseText.startsWith("Error from") ||
+                botResponseText.includes("API is not available") ||
+                botResponseText.includes("API client could not be initialized") ||
+                botResponseText.includes("not configured") ||
+                botResponseText.includes("not fully implemented") ||
+                botResponseText.includes("placeholder")) {
+                errorOccurred = true;
+              }
+          } catch (error: any) {
+              console.error(`Non-streaming chat error with ${activeProvider}:`, error);
+              botResponseText = `An unexpected error occurred with ${activeProvider}: ${error.message || 'Unknown error'}.`;
+              errorOccurred = true;
+          }
         }
+      } else {
+        botResponseText = "No LLM provider configured and no MCP server connected.";
+        errorOccurred = true;
       }
     } catch (overallError: any) {
       console.error("Overall chat handling error:", overallError);

@@ -1,18 +1,5 @@
 import React from 'react'; // Removed useState, useRef, useEffect, useCallback
 import { ApiKeys, ChatMessage, LLMProvider, MCPServer, LLMService } from '../types';
-// Remove specific service imports
-// import {
-//   generateGeminiText,
-//   isGeminiEffectivelyAvailable
-// } from '../services/geminiService';
-// import {
-//   generateOpenAIText,
-//   isOpenAIEffectivelyAvailable
-// } from '../services/openaiService'; // Stubbed
-// import {
-//   generateClaudeText,
-//   isClaudeEffectivelyAvailable
-// } from '../services/claudeService'; // Stubbed
 import { LoadingSpinnerIcon, OpenAiIcon, ClaudeIcon, GeminiIcon, BrainIcon } from '../constants';
 
 // Import Langchain types (still needed for prop type)
