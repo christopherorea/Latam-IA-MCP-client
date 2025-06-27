@@ -49,6 +49,19 @@
 }
 </script>
 <link rel="stylesheet" href="/src/index.css">
+<link rel="manifest" id="manifest-link" href="/public/manifest-pwa.json"> <!-- manifest.json para chrome-extention y manifest-pwa.json para pwa -->
+<meta name="theme-color" content="#1a202c">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/public/service-worker.js').then(function(registration) {
+        // Registration successful
+      }, function(err) {
+        // Registration failed
+      });
+    });
+  }
+</script>
 </head>
 <body class="bg-gray-900">
     <div id="root"></div>
