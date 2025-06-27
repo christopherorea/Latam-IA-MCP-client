@@ -22,7 +22,7 @@ const LLMChat: React.FC<LLMChatProps> = ({
   activeLLMService
 }) => {
   
-  const { messages, input, setInput, isLoading, handleSend, messagesEndRef } = useChat({
+  const { messages, input, setInput, isLoading, handleSend, messagesEndRef, chatContainerRef } = useChat({
     apiKeys,
     activeProvider,
     mcpServers,
@@ -78,7 +78,7 @@ const LLMChat: React.FC<LLMChatProps> = ({
   const isSendButtonDisabled = isLoading || !input.trim() || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable && mcpServers.every(server => server.status !== 'connected'));
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-800 rounded-xl shadow-xl flex flex-col h-[600px] max-h-[70vh]">
+    <div className="p-4 sm:p-6 bg-gray-800 rounded-xl shadow-xl flex flex-col h-[80vh] max-h-[900px] min-h-[400px] overflow-hidden">
       <h2 className="text-xl sm:text-2xl font-semibold text-sky-400 mb-4 flex items-center">
         <ProviderIcon /> Chat with {providerTitleName}
       </h2>
@@ -94,7 +94,7 @@ const LLMChat: React.FC<LLMChatProps> = ({
               {getPlaceholderText()}. Chat features disabled.
             </div>
           )}
-          <div className="flex-grow overflow-y-auto mb-4 p-3 space-y-4 bg-gray-850 rounded-lg border border-gray-700 custom-scrollbar">
+          <div ref={chatContainerRef} className="flex-grow overflow-y-auto mb-4 p-3 space-y-4 bg-gray-850 rounded-lg border border-gray-700 custom-scrollbar min-h-0" style={{minHeight: 0, maxHeight: '100%'}}>
             {messages.map(msg => (
               <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : msg.sender === 'system' ? 'justify-center' : 'justify-start'}`}>
                 <div

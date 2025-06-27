@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { ApiKeys, ChatMessage, LLMProvider, MCPServer, LLMService } from '../types';
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { HumanMessage, AIMessage } from "@langchain/core/messages";
@@ -19,6 +19,7 @@ interface UseChatReturn {
   isLoading: boolean;
   handleSend: () => Promise<void>;
   messagesEndRef: React.RefObject<HTMLDivElement>;
+  chatContainerRef: React.RefObject<HTMLDivElement>;
 }
 
 export const useChat = ({ 
@@ -33,11 +34,15 @@ export const useChat = ({
   const [input, setInput] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
-  
+  // Scroll siempre al final cuando cambia el contenido
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, []);
+
   useEffect(scrollToBottom, [messages, scrollToBottom]);
 
   
@@ -148,7 +153,7 @@ export const useChat = ({
               },
               () => {
                 setIsLoading(false);
-                scrollToBottom();
+                // scrollToBottom();
               },
               (errorMsg) => {
                 setMessages(prev => {
@@ -159,7 +164,7 @@ export const useChat = ({
                 });
                 setIsLoading(false);
                 errorOccurred = true;
-                scrollToBottom();
+                // scrollToBottom();
               }
             );
           } catch (error: any) {
@@ -172,7 +177,7 @@ export const useChat = ({
             });
             setIsLoading(false);
             errorOccurred = true;
-            scrollToBottom();
+            // scrollToBottom();
           }
         } else {
           try {
@@ -210,7 +215,7 @@ export const useChat = ({
       };
       setMessages(prev => [...prev, botMessage]);
       setIsLoading(false);
-      scrollToBottom();
+      // scrollToBottom();
     }
   };
 
@@ -220,6 +225,7 @@ export const useChat = ({
     setInput,
     isLoading,
     handleSend,
-    messagesEndRef: messagesEndRef as React.RefObject<HTMLDivElement>,
+    messagesEndRef,
+    chatContainerRef,
   };
 };
