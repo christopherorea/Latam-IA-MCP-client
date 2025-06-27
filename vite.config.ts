@@ -4,6 +4,7 @@ import commonjs from 'vite-plugin-commonjs';
 import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
 import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig(() => {
     return {
@@ -15,7 +16,8 @@ export default defineConfig(() => {
         commonjs(),
         nodePolyfills({
           protocolImports: true
-        })
+        }),
+        tailwindcss(),
       ],
       resolve: {
         alias: {
@@ -24,7 +26,9 @@ export default defineConfig(() => {
         }
       },
       optimizeDeps: {
-        exclude: ['@langchain/core'],
+        exclude: [
+          '@langchain/core'
+        ],
         include: [
           'camelcase',
           'decamelize',
@@ -40,7 +44,7 @@ export default defineConfig(() => {
               process: true,
               buffer: true
             }),
-            NodeModulesPolyfillPlugin()
+            NodeModulesPolyfillPlugin(),
           ]
         },
       },

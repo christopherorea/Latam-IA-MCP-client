@@ -42,8 +42,7 @@ const App: React.FC = () => {
     handleAddServer,
     handleRemoveServer,
     handleConnectToServer,
-    mcpCleanup, 
-    mcpServerConfig,
+    mcpCleanup,
     
     stableConnectedServerConfig, 
   } = useMcpServers({});
