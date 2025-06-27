@@ -49,6 +49,23 @@
 }
 </script>
 <link rel="stylesheet" href="/src/index.css">
+<link rel="manifest" id="manifest-link" href="/public/manifest-pwa.json">
+<meta name="theme-color" content="#1a202c">
+<script>
+  // Cambia el manifest dinámicamente según el modo (PWA o extensión)
+  // Por defecto usa manifest-pwa.json
+  // Si quieres usar el de extensión, cambia el href manualmente o con build script
+  // document.getElementById('manifest-link').setAttribute('href', '/public/manifest-extension.json');
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/public/service-worker.js').then(function(registration) {
+        // Registration successful
+      }, function(err) {
+        // Registration failed
+      });
+    });
+  }
+</script>
 </head>
 <body class="bg-gray-900">
     <div id="root"></div>
