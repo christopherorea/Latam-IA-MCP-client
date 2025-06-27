@@ -34,13 +34,13 @@ export const useChat = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Scroll to bottom on new message
+  
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
   useEffect(scrollToBottom, [messages, scrollToBottom]);
 
-  // Reset messages if chat type changes
+  
   const lastChatTypeRef = useRef<string | null>(null);
   const connectedServersSignature = mcpServers
     .filter(s => s.status === 'connected')
@@ -82,7 +82,7 @@ export const useChat = ({
     }
   }, [activeProvider, apiKeys, activeLLMService, keysLoadedFromStorage, langchainAgent, connectedServersSignature]);
 
-  // Core chat logic
+  
   const handleSend = async () => {
     const isCurrentProviderAvailable = activeLLMService?.isAvailable(apiKeys[activeProvider]) || false;
     if (!input.trim() || isLoading || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderAvailable && mcpServers.every(server => server.status !== 'connected'))) return;

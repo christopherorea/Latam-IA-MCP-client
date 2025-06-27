@@ -1,12 +1,12 @@
 import { GoogleGenAI, GenerateContentResponse, Part, Content } from "@google/genai";
 import { GEMINI_API_MODEL } from '../constants';
-import { LLMService } from '../types'; // Import the new interface
+import { LLMService } from '../types'; 
 
-// Removed global 'ai' instance. Each call will get a fresh client or use a short-lived one.
+
 
 const getGenAIClient = (apiKey: string): GoogleGenAI | null => {
   if (!apiKey || apiKey.trim() === '') {
-    // console.warn("Attempted to get Gemini client with an empty API key.");
+    
     return null;
   }
   try {
@@ -26,7 +26,7 @@ export const generateGeminiText = async (prompt: string, apiKey: string | undefi
     return "Gemini API is not available. Please ensure API Key is configured in API Key Management.";
   }
   
-  // apiKey is now guaranteed to be a non-empty string due to the check above
+  
   const genAIInstance = getGenAIClient(apiKey as string); 
   if (!genAIInstance) {
     return "Gemini API client could not be initialized. Check console for details (e.g., invalid API key format).";
@@ -44,7 +44,7 @@ export const generateGeminiText = async (prompt: string, apiKey: string | undefi
   } catch (error) {
     console.error("Error generating text with Gemini:", error);
     if (error instanceof Error) {
-        // Check for common API key related errors if possible, e.g. from error.message or error.code
+        
         if (error.message.includes("API key not valid")) {
             return "Error from Gemini: API key not valid. Please check your Gemini API key.";
         }
@@ -99,7 +99,7 @@ export const generateGeminiTextStream = async (
   }
 };
 
-// Create and export the LLMService implementation for Gemini
+
 export const geminiService: LLMService = {
   generateText: generateGeminiText,
   generateTextStream: generateGeminiTextStream,

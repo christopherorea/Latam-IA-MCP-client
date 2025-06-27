@@ -1,7 +1,7 @@
-import { LLMService } from '../types'; // Import the new interface
+import { LLMService } from '../types'; 
 
-// Stub for Claude service
-// In a real app, this would use Anthropic's SDK.
+
+
 
 const isClaudeEffectivelyAvailable = (apiKey: string | undefined): boolean => {
   return !!apiKey && apiKey.trim() !== '';
@@ -11,13 +11,13 @@ const generateClaudeText = async (prompt: string, apiKey: string | undefined): P
   if (!isClaudeEffectivelyAvailable(apiKey)) {
     return "Claude API is not available. Please ensure API Key is configured.";
   }
-  // Simulate API call
   
-  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+  
+  await new Promise(resolve => setTimeout(resolve, 1000)); 
   return `(Stubbed Claude Response) You said: "${prompt}". This function is a placeholder.`;
 };
 
-// Placeholder for streaming if needed
+
 const generateClaudeTextStream = async (
   prompt: string,
   apiKey: string | undefined,
@@ -36,7 +36,7 @@ const generateClaudeTextStream = async (
   onComplete();
 };
 
-// Create and export the LLMService implementation for Claude
+
 export const claudeService: LLMService = {
   generateText: generateClaudeText,
   generateTextStream: generateClaudeTextStream,

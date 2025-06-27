@@ -1,18 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import { auth } from '../services/firebase';
-import firebase from 'firebase/compat/app'; // For EmailAuthProvider, GoogleAuthProvider
+import firebase from 'firebase/compat/app'; 
 
-// FirebaseUI config
+
 const uiConfig = {
   signInFlow: 'popup',
   signInOptions: [
     firebase.auth.EmailAuthProvider.PROVIDER_ID,
     firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-    // Add other providers here, like:
-    // firebase.auth.GithubAuthProvider.PROVIDER_ID,
+    
+    
   ],
   callbacks: {
-    // Avoid redirects after sign-in.
+    
     signInSuccessWithAuthResult: () => false,
   },
 };
@@ -21,7 +21,7 @@ const Auth: React.FC = () => {
   const uiContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    // Ensure firebaseui is available (it's loaded globally from index.html)
+    
     if (window.firebaseui) {
       const ui = window.firebaseui.auth.AuthUI.getInstance() || new window.firebaseui.auth.AuthUI(auth);
       if (uiContainerRef.current) {
@@ -31,14 +31,14 @@ const Auth: React.FC = () => {
       console.error("FirebaseUI not loaded. Ensure it's included in index.html.");
     }
 
-    // Optional: FirebaseUI's own cleanup logic usually handles this.
-    // If you specifically need to delete the instance on component unmount:
-    // return () => {
-    //   const uiInstance = window.firebaseui?.auth?.AuthUI.getInstance();
-    //   if (uiInstance) {
-    //     uiInstance.delete();
-    //   }
-    // };
+    
+    
+    
+    
+    
+    
+    
+    
   }, []);
 
   return (

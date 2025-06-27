@@ -1,4 +1,4 @@
-import firebase from 'firebase/compat/app'; // Import for firebase.User
+import firebase from 'firebase/compat/app'; 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
@@ -8,7 +8,7 @@ export interface ApiKeys {
   gemini: string;
 }
 
-// Ensure LLMProvider includes all expected providers
+
 export type LLMProvider = 'openai' | 'claude' | 'gemini';
 
 export interface AppUser extends firebase.User {}
@@ -18,7 +18,7 @@ export interface ChatMessage {
   text: string;
   sender: 'user' | 'bot' | 'system' | 'error';
   timestamp: Date;
-  provider?: LLMProvider; // Optional: to know which LLM generated the message
+  provider?: LLMProvider; 
 }
 
 export type MCPConnectionStatus = 'idle' | 'connecting' | 'connected' | 'streaming' | 'error';
@@ -30,7 +30,7 @@ export interface MCPServer {
   bearerToken?: string;
   status: MCPConnectionStatus;
   statusMessage: string;
-  // Add client and transport instances
+  
   client?: Client;
   transport?: StreamableHTTPClientTransport;
 }
@@ -41,7 +41,7 @@ export interface LLMChatProps {
   mcpServers: MCPServer[];
   keysLoadedFromStorage: boolean;
   langchainAgent: ReturnType<typeof createReactAgent> | null;
-  activeLLMService: LLMService | null; // Add the new prop
+  activeLLMService: LLMService | null; 
 }
 
 export interface LLMService {
@@ -56,7 +56,7 @@ declare global {
   }
   namespace NodeJS {
     interface ProcessEnv {
-      // API_KEY?: string; 
+      
     }
   }
 }

@@ -8,17 +8,17 @@ import LLMChat from './components/LLMChat';
 import { LoadingSpinnerIcon } from './constants';
 import { convertMcpToLangchainTools } from "@h1deya/langchain-mcp-tools";
 
-// Import specific Langchain LLM integrations
+
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
-// Import refactored LLM services
+
 import { geminiService } from './services/geminiService';
 import { openAIService } from './services/openaiService';
 import { claudeService } from './services/claudeService';
 
-// Import the custom hook for MCP servers
+
 import { useMcpServers } from './hooks/useMcpServers';
 import { useAuth } from './hooks/useAuth';
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
@@ -32,49 +32,49 @@ const App: React.FC = () => {
   const [activeLLMProvider, setActiveLLMProvider] = useState<LLMProvider>('gemini');
   const [activeLLMService, setActiveLLMService] = useState<LLMService | null>(geminiService);
 
-  // Re-introduce keysLoadedFromStorage state
+  
   const [keysLoadedFromStorage, setKeysLoadedFromStorage] = useState<boolean>(false);
 
-  // Use the custom hook for MCP server logic
+  
   const { 
     mcpServers,
     serversLoadedFromStorage,
     handleAddServer,
     handleRemoveServer,
     handleConnectToServer,
-    mcpCleanup, // Descomentado: Necesitamos exponerlo aquí para la limpieza final
+    mcpCleanup, 
     mcpServerConfig,
-    // connectedServersVersion, // Ya no necesitamos importar este valor
-    stableConnectedServerConfig, // <-- Add this line
+    
+    stableConnectedServerConfig, 
   } = useMcpServers({});
 
-  // Langchain agent state remains here as it depends on both LLM service and MCP servers
+  
   const [langchainAgent, setLangchainAgent] = useState<ReturnType<typeof createReactAgent> | null>(null);
-  // Estado para almacenar la función de limpieza del agente/tools
+  
   const [agentCleanup, setAgentCleanup] = useState<any>(undefined);
 
-  // Unique config key for agent
+  
   const agentConfigKey = useMemo(() => JSON.stringify({
     provider: activeLLMProvider,
     apiKeys,
     connectedServers: stableConnectedServerConfig,
   }), [activeLLMProvider, apiKeys, stableConnectedServerConfig]);
 
-  // Initialize Langchain agent when config changes
+  
   useEffect(() => {
-    // Las condiciones de carga y LLM activo siguen siendo necesarias
+    
     if (!serversLoadedFromStorage || !keysLoadedFromStorage || !activeLLMService) {
        setLangchainAgent(null);
-       // Limpiar agente y cleanup si no se cumplen las condiciones
+       
        setAgentCleanup(undefined);
        return;
     }
 
-    // Parsear la configuración stringificada desde la clave para verificar si hay servidores conectados
+    
     const currentAgentConfig = JSON.parse(agentConfigKey);
     if (Object.keys(currentAgentConfig.connectedServers).length === 0) {
       setLangchainAgent(null);
-      // Limpiar agente y cleanup si no hay servers conectados
+      
       setAgentCleanup(undefined);
       return;
     }
@@ -82,7 +82,7 @@ const App: React.FC = () => {
     let cancelled = false;
     const initializeAgent = async () => {
       try {
-        // Usamos la configuración parseada para obtener el LLM y las tools
+        
         let llmInstance = null;
         switch (currentAgentConfig.provider) {
           case 'openai':
@@ -100,13 +100,13 @@ const App: React.FC = () => {
           setAgentCleanup(undefined);
           return;
         }
-        // Usamos el objeto memoizado de servers conectados desde la clave para convertir a tools
+        
         const toolsAndCleanup = await convertMcpToLangchainTools(
-          currentAgentConfig.connectedServers, // Usar el objeto parseado desde la clave
+          currentAgentConfig.connectedServers, 
           { logLevel: 'info' }
         );
         if (cancelled) {
-           // Limpiar si fue cancelado
+           
            if (toolsAndCleanup.cleanup) {
              toolsAndCleanup.cleanup();
            }
@@ -114,14 +114,14 @@ const App: React.FC = () => {
            return;
         }
         const tools = toolsAndCleanup.tools;
-        // DEBUG: Mostrar las tools disponibles
+        
         if (Array.isArray(tools)) {
           console.log('Langchain tools disponibles:', tools.map(t => t.name || t));
         } else {
           console.log('Langchain tools disponibles:', tools);
         }
         
-        // Almacenar la función de limpieza y el agente
+        
         setAgentCleanup(() => toolsAndCleanup.cleanup);
         setLangchainAgent(() => createReactAgent({ llm: llmInstance, tools }));
       } catch (error) {
@@ -134,31 +134,31 @@ const App: React.FC = () => {
 
     return () => {
       cancelled = true;
-      // Llamar a la función de limpieza si existe
+      
       if (agentCleanup) {
         agentCleanup();
       }
       setLangchainAgent(null);
       setAgentCleanup(undefined);
     };
-  // eslint-disable-next-line
-  }, [agentConfigKey, serversLoadedFromStorage, keysLoadedFromStorage, activeLLMService]); // Dependemos de la clave de configuración y las condiciones de carga/LLM
+  
+  }, [agentConfigKey, serversLoadedFromStorage, keysLoadedFromStorage, activeLLMService]); 
 
-  // Cleanup on unmount
+  
   useEffect(() => {
     return () => {
       if (agentCleanup) agentCleanup();
       if (mcpCleanup) mcpCleanup();
     };
-  }, [agentCleanup, mcpCleanup]); // Depende de las funciones de limpieza
+  }, [agentCleanup, mcpCleanup]); 
 
-  // Load API keys from localStorage
+  
   useEffect(() => {
     try {
       const storedKeys = localStorage.getItem(LOCAL_STORAGE_API_KEYS);
       if (storedKeys) {
         const loadedKeys = JSON.parse(storedKeys) as ApiKeys;
-        setApiKeys(loadedKeys); // Load the keys into state
+        setApiKeys(loadedKeys); 
 
         if (loadedKeys && typeof loadedKeys === 'object') {
           let initialProvider: LLMProvider = 'gemini';
@@ -172,20 +172,20 @@ const App: React.FC = () => {
             case 'openai': setActiveLLMService(openAIService); break;
             case 'claude': setActiveLLMService(claudeService); break;
             case 'gemini': setActiveLLMService(geminiService); break;
-            default: setActiveLLMService(geminiService); // Default to Gemini
+            default: setActiveLLMService(geminiService); 
           }
         }
       }
     } catch (error) {
       console.error("Error loading API keys from localStorage:", error);
     } finally {
-      setKeysLoadedFromStorage(true); // Set to true after attempting to load
+      setKeysLoadedFromStorage(true); 
     }
-  }, []); // Empty dependency array for initial load
+  }, []); 
 
-  // Save API keys to localStorage
+  
   useEffect(() => {
-    if (keysLoadedFromStorage) { // Only save if keys have been loaded from storage
+    if (keysLoadedFromStorage) { 
       try {
         const keysToSave = JSON.stringify(apiKeys);
         localStorage.setItem(LOCAL_STORAGE_API_KEYS, keysToSave);
@@ -196,7 +196,7 @@ const App: React.FC = () => {
   }, [apiKeys, keysLoadedFromStorage]);
 
   const handleApiKeysChange = (newKeys: ApiKeys) => {
-    setApiKeys(newKeys); // Update the apiKeys state
+    setApiKeys(newKeys); 
 
     if (!newKeys[activeLLMProvider]?.trim()) {
       if (newKeys.gemini?.trim()) setActiveLLMProvider('gemini');
@@ -245,7 +245,7 @@ const App: React.FC = () => {
               onApiKeysChange={handleApiKeysChange}
               activeLLMProvider={activeLLMProvider}
               onLLMProviderChange={handleLLMProviderChange}
-              keysLoadedFromStorage={keysLoadedFromStorage} // Pass keysLoadedFromStorage
+              keysLoadedFromStorage={keysLoadedFromStorage} 
             />
             <ServerConnection
               servers={mcpServers}
@@ -264,7 +264,7 @@ const App: React.FC = () => {
                 activeProvider={activeLLMProvider}
                 mcpServers={mcpServers}
                 keysLoadedFromStorage={keysLoadedFromStorage}
-                langchainAgent={langchainAgent} // Pass the agent state directly
+                langchainAgent={langchainAgent} 
                 activeLLMService={activeLLMService}
               />
             )}

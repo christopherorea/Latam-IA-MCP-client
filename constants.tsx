@@ -1,6 +1,6 @@
 import React from 'react';
 
-// IMPORTANT: Replace with your actual Firebase project configuration
+
 export const FIREBASE_CONFIG = {
   apiKey: "YOUR_FIREBASE_API_KEY",
   authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
@@ -11,9 +11,9 @@ export const FIREBASE_CONFIG = {
 };
 
 export const GEMINI_API_MODEL = "gemini-2.5-flash-preview-04-17";
-// OpenAI and Claude models would be defined here if used directly
-// export const OPENAI_API_MODEL = "gpt-3.5-turbo"; 
-// export const CLAUDE_API_MODEL = "claude-2";
+
+
+
 
 
 export const LoadingSpinnerIcon: React.FC<{className?: string}> = ({className}) => (
@@ -77,9 +77,9 @@ export const PlusCircleIcon: React.FC<{className?: string}> = ({className}) => (
   </svg>
 );
 
-// Generic LLM Provider Icons (using existing icons or simple placeholders)
+
 export const OpenAiIcon: React.FC<{className?: string}> = ({className}) => (
-  // Placeholder - using a generic brain/AI icon or text
+  
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-5 h-5 ${className}`}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 21v-1.5M12 3v1.5m0 15v1.5m3.75-18v1.5M19.5 8.25h-1.5m-2.25 3.75h-1.5m-3.75 0h-1.5m1.5-3.75H12m2.25 0h1.5M12 12v1.5m0 3.75v1.5M15.75 3v1.5m0 15v1.5" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75A5.25 5.25 0 006.75 12a5.25 5.25 0 005.25 5.25a5.25 5.25 0 005.25-5.25A5.25 5.25 0 0012 6.75z" />
@@ -87,20 +87,20 @@ export const OpenAiIcon: React.FC<{className?: string}> = ({className}) => (
 );
 
 export const ClaudeIcon: React.FC<{className?: string}> = ({className}) => (
-  // Placeholder - using a generic text/document icon or text "C"
+  
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-5 h-5 ${className}`}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
   </svg>
 );
 
 export const GeminiIcon: React.FC<{className?: string}> = ({className}) => (
-  // Placeholder - using a generic star/sparkle icon or text "G"
+  
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-5 h-5 ${className}`}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L1.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.25 12L17 14.188l-1.25-2.188a2.25 2.25 0 00-1.546-1.546L12 9.25l2.188-1.25a2.25 2.25 0 001.546-1.546L17 4.25l1.25 2.188a2.25 2.25 0 001.546 1.546L21.75 9.25l-2.188 1.25a2.25 2.25 0 00-1.546 1.546z" />
   </svg>
 );
 
-export const BrainIcon: React.FC<{className?: string}> = ({className}) => ( // Generic AI icon
+export const BrainIcon: React.FC<{className?: string}> = ({className}) => ( 
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-5 h-5 ${className}`}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 21v-1.5M12 3v1.5m0 15v1.5m3.75-18v1.5M19.5 8.25h-1.5m-2.25 3.75h-1.5m-3.75 0h-1.5m1.5-3.75H12m2.25 0h1.5M12 12v1.5m0 3.75v1.5M15.75 3v1.5m0 15v1.5" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75A5.25 5.25 0 006.75 12a5.25 5.25 0 005.25 5.25a5.25 5.25 0 005.25-5.25A5.25 5.25 0 0012 6.75z" />

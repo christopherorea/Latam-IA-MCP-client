@@ -4,17 +4,14 @@ import 'firebase/compat/auth';
 import { FIREBASE_CONFIG } from '../constants';
 import { AppUser } from '../types';
 
-// Initialize Firebase outside the hook to avoid re-initialization
 if (!firebase.apps.length) {
   firebase.initializeApp(FIREBASE_CONFIG);
 }
-
 const auth = firebase.auth();
 
 interface UseAuthReturn {
   user: AppUser | null;
-  loadingAuth: boolean; // Indicates if the initial auth state is being loaded
-  // signIn: () => Promise<void>; // Add specific sign-in methods later if needed
+  loadingAuth: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -24,17 +21,9 @@ export const useAuth = (): UseAuthReturn => {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(firebaseUser => {
-      if (firebaseUser) {
-        // User is signed in.
-        setUser(firebaseUser as AppUser);
-      } else {
-        // User is signed out.
-        setUser(null);
-      }
+      setUser(firebaseUser ? (firebaseUser as AppUser) : null);
       setLoadingAuth(false);
     });
-
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 

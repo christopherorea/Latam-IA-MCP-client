@@ -1,13 +1,7 @@
-import React from 'react'; // Removed useState, useRef, useEffect, useCallback
+import React from 'react'; 
 import { ApiKeys, ChatMessage, LLMProvider, MCPServer, LLMService } from '../types';
 import { LoadingSpinnerIcon, OpenAiIcon, ClaudeIcon, GeminiIcon, BrainIcon } from '../constants';
-
-// Import Langchain types (still needed for prop type)
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-// Remove HumanMessage, AIMessage as they are used inside the hook
-// import { HumanMessage, AIMessage } from "@langchain/core/messages";
-
-// Import the custom hook
 import { useChat } from '../hooks/useChat';
 
 interface LLMChatProps {
@@ -16,7 +10,7 @@ interface LLMChatProps {
   mcpServers: MCPServer[];
   keysLoadedFromStorage: boolean;
   langchainAgent: ReturnType<typeof createReactAgent> | null;
-  activeLLMService: LLMService | null; // The active LLM service object
+  activeLLMService: LLMService | null; 
 }
 
 const LLMChat: React.FC<LLMChatProps> = ({
@@ -27,7 +21,7 @@ const LLMChat: React.FC<LLMChatProps> = ({
   langchainAgent,
   activeLLMService
 }) => {
-  // Use the custom hook to manage chat state and logic
+  
   const { messages, input, setInput, isLoading, handleSend, messagesEndRef } = useChat({
     apiKeys,
     activeProvider,
@@ -37,8 +31,8 @@ const LLMChat: React.FC<LLMChatProps> = ({
     activeLLMService,
   });
 
-  // isCurrentProviderEffectivelyAvailable is now internal to the hook or can be derived if needed
-  // For the placeholder text, we can derive availability based on activeLLMService and apiKeys
+  
+  
   const isCurrentProviderEffectivelyAvailable = activeLLMService?.isAvailable(apiKeys[activeProvider]) || false;
 
   const getBubbleClasses = (sender: ChatMessage['sender']) => {
@@ -58,29 +52,29 @@ const LLMChat: React.FC<LLMChatProps> = ({
 
   const getPlaceholderText = () => {
     if (!keysLoadedFromStorage) return "Cargando claves API...";
-    if (langchainAgent) return "Type your message to the Langchain agent..."; // Updated placeholder
+    if (langchainAgent) return "Type your message to the Langchain agent..."; 
     const providerName = activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1);
-    // Use the service's isAvailable method (derived from activeLLMService prop)
+    
     if (isCurrentProviderEffectivelyAvailable) return `Type your message to ${providerName}...`;
     return `${providerName} API Key not configured`;
   };
 
   const ProviderIcon = () => {
-    if (langchainAgent) return <BrainIcon className="mr-3 text-sky-400 h-6 w-6" />; // Use BrainIcon for Langchain
-    switch(activeProvider) {
-        case 'gemini': return <GeminiIcon className="mr-3 text-sky-400 h-6 w-6" />;
-        case 'openai': return <OpenAiIcon className="mr-3 text-sky-400 h-6 w-6" />;
-        case 'claude': return <ClaudeIcon className="mr-3 text-sky-400 h-6 w-6" />;
-        default: return <BrainIcon className="mr-3 text-sky-400 h-6 w-6" />;
+    if (langchainAgent) return <BrainIcon className="mr-3 text-sky-400 h-6 w-6" />; 
+    switch (activeProvider) {
+      case 'gemini': return <GeminiIcon className="mr-3 text-sky-400 h-6 w-6" />;
+      case 'openai': return <OpenAiIcon className="mr-3 text-sky-400 h-6 w-6" />;
+      case 'claude': return <ClaudeIcon className="mr-3 text-sky-400 h-6 w-6" />;
+      default: return <BrainIcon className="mr-3 text-sky-400 h-6 w-6" />;
     }
   };
 
-  const providerTitleName = langchainAgent ? "Langchain Agent" : activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1); // Update title
+  const providerTitleName = langchainAgent ? "Langchain Agent" : activeProvider.charAt(0).toUpperCase() + activeProvider.slice(1); 
 
-  // Use isLoading from the hook
+  
   const isInputDisabled = isLoading || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable && mcpServers.every(server => server.status !== 'connected'));
 
-  // Use isLoading and input from the hook
+  
   const isSendButtonDisabled = isLoading || !input.trim() || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable && mcpServers.every(server => server.status !== 'connected'));
 
   return (
@@ -95,7 +89,7 @@ const LLMChat: React.FC<LLMChatProps> = ({
         </div>
       ) : (
         <>
-          {!langchainAgent && !isCurrentProviderEffectivelyAvailable && messages.length <=1 && ( // Show message if no agent or provider is available
+          {!langchainAgent && !isCurrentProviderEffectivelyAvailable && messages.length <= 1 && ( 
             <div className="p-3 mb-4 text-center bg-yellow-800/60 text-yellow-300 rounded-lg border border-yellow-700 text-sm">
               {getPlaceholderText()}. Chat features disabled.
             </div>
@@ -112,7 +106,9 @@ const LLMChat: React.FC<LLMChatProps> = ({
                     <p className={`text-xs mt-1.5 ${msg.sender === 'user' ? 'text-sky-200/80' : 'text-gray-400/80'} text-right`}>
                       {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </p>
-                  )}\n                </div>
+                  )}
+
+                </div>
               </div>
             ))}
             <div ref={messagesEndRef} />
@@ -122,17 +118,17 @@ const LLMChat: React.FC<LLMChatProps> = ({
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !isSendButtonDisabled && handleSend()} // Use handleSend from the hook
+              onKeyPress={(e) => e.key === 'Enter' && !isSendButtonDisabled && handleSend()} 
               placeholder={getPlaceholderText()}
               className="flex-grow px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-l-lg text-gray-200 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 transition-colors disabled:opacity-60"
-              disabled={isInputDisabled} // Use isInputDisabled from the hook
+              disabled={isInputDisabled} 
             />
             <button
-              onClick={handleSend} // Use handleSend from the hook
-              disabled={isSendButtonDisabled} // Use isSendButtonDisabled from the hook
+              onClick={handleSend} 
+              disabled={isSendButtonDisabled} 
               className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2.5 px-5 sm:px-6 rounded-r-lg transition duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-75 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center min-w-[80px] sm:min-w-[100px]"
             >
-              {isLoading ? <LoadingSpinnerIcon className="w-5 h-5 text-white"/> : 'Send'} // Use isLoading from the hook
+              {isLoading ? <LoadingSpinnerIcon className="w-5 h-5 text-white" /> : 'Send'}
             </button>
           </div>
         </>

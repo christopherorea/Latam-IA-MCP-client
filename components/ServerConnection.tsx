@@ -7,7 +7,7 @@ interface ServerConnectionProps {
   onAddServer: (name: string, url: string, bearerToken?: string) => void;
   onRemoveServer: (id: string) => void;
   onConnectToServer: (id: string) => void;
-  serversLoadedFromStorage: boolean; // Add this prop
+  serversLoadedFromStorage: boolean; 
 }
 
 const ServerConnection: React.FC<ServerConnectionProps> = ({ servers, onAddServer, onRemoveServer, onConnectToServer, serversLoadedFromStorage }) => {
@@ -23,9 +23,9 @@ const ServerConnection: React.FC<ServerConnectionProps> = ({ servers, onAddServe
       return;
     }
     try {
-      new URL(newServerUrl); // Validate URL format
+      new URL(newServerUrl); 
     } catch (_) {
-      setAddServerError('Invalid server URL format. Please include http:// or https://');
+      setAddServerError('Invalid server URL format. Please include /mcp')
       return;
     }
     setAddServerError('');
@@ -62,7 +62,7 @@ const ServerConnection: React.FC<ServerConnectionProps> = ({ servers, onAddServe
     }
   };
 
-  // Show loading state if servers are not yet loaded
+  
   if (!serversLoadedFromStorage) {
     return (
       <div className="bg-gray-800 p-6 rounded-xl shadow-xl flex items-center justify-center h-40">
@@ -105,7 +105,7 @@ const ServerConnection: React.FC<ServerConnectionProps> = ({ servers, onAddServe
         <div className="mb-4">
           <label htmlFor="newServerBearerToken" className="block text-sm font-medium text-gray-300 mb-1">Bearer Token (Optional)</label>
           <input
-            type="password" // Use password type for tokens
+            type="password" 
             id="newServerBearerToken"
             value={newServerBearerToken}
             onChange={(e) => setNewServerBearerToken(e.target.value)}

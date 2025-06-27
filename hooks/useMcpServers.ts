@@ -26,12 +26,12 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
   const [mcpCleanup, setMcpCleanup] = useState<McpServerCleanupFn | undefined>(undefined);
   const [connectedServersVersion, setConnectedServersVersion] = useState(0);
 
-  // Helper to update servers state
+  
   const updateServers = useCallback((updater: MCPServer[] | ((prev: MCPServer[]) => MCPServer[])) => {
     setMcpServers(updater);
   }, []);
 
-  // Load servers from localStorage
+  
   useEffect(() => {
     try {
       const storedServers = localStorage.getItem(LOCAL_STORAGE_MCP_SERVERS);
@@ -57,7 +57,7 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
     }
   }, [updateServers]);
 
-  // Save servers to localStorage (excluding client/transport)
+  
   useEffect(() => {
     if (serversLoadedFromStorage) {
       try {
@@ -69,7 +69,7 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
     }
   }, [mcpServers, serversLoadedFromStorage]);
 
-  // Add, remove, connect handlers
+  
   const handleAddServer = useCallback((name: string, url: string, bearerToken?: string) => {
     const client = new Client(
       { name: "MCP LLM Client", version: "1.0.0" },
@@ -135,7 +135,7 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
     }
   }, [mcpServers, updateServerStatus, updateServers]);
 
-  // Config for agent initialization
+  
   const mcpServerConfig = useMemo(() => {
     return mcpServers.reduce((acc, server) => {
       acc[server.name] = {
@@ -146,7 +146,7 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
     }, {} as Record<string, { url: string; bearerToken?: string }>);
   }, [mcpServers]);
 
-  // Only connected servers
+  
   const stableConnectedServerConfigInternal = useMemo(() => {
     return mcpServers.filter(s => s.status === 'connected').reduce((acc, server) => {
       acc[server.name] = {
@@ -157,7 +157,7 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
     }, {} as Record<string, { url: string; bearerToken?: string }>);
   }, [mcpServers]);
 
-  // Track changes in connected servers
+  
   const prevStableConnectedServerConfigInternalRef = useRef(stableConnectedServerConfigInternal);
   useEffect(() => {
     const currentConfigString = JSON.stringify(stableConnectedServerConfigInternal);
@@ -168,7 +168,7 @@ export const useMcpServers = ({}: UseMcpServersProps): UseMcpServersReturn => {
     }
   }, [stableConnectedServerConfigInternal]);
 
-  // Auto-connect idle servers after loading
+  
   useEffect(() => {
     if (!serversLoadedFromStorage) return;
     mcpServers.forEach((server) => {
