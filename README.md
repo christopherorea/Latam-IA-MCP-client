@@ -240,3 +240,4 @@ Si este proyecto te resulta útil, siéntete libre de citarlo.
 ```
 
 ¡Bienvenido a la revolución de la IA abierta y colaborativa! 🌎🤖
+
