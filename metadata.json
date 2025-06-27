@@ -1,0 +1,6 @@
+{
+  "name": "MCP LLM Client",
+  "description": "A web application to manage LLM API keys, connect to MCP servers, and interact with Gemini AI. Features user authentication and a chat interface.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
