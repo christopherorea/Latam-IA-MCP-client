@@ -9,7 +9,6 @@ import { LoadingSpinnerIcon } from './constants';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { MemorySaver } from "@langchain/langgraph";
 import { convertMcpToLangchainTools, McpServerCleanupFn } from "@h1deya/langchain-mcp-tools";
 
 // Import specific Langchain LLM integrations
@@ -37,11 +36,9 @@ const App: React.FC = () => {
     if (typeof updater === 'function') {
       setMcpServers(prevState => {
         const newState = updater(prevState);
-
         return newState;
       });
     } else {
-
       setMcpServers(updater);
     }
   };
@@ -88,10 +85,8 @@ const App: React.FC = () => {
 
     try {
       const storedServers = localStorage.getItem(LOCAL_STORAGE_MCP_SERVERS);
-      console.log("Loading MCP servers - Raw from localStorage:", storedServers); // Added log
       if (storedServers) {
         const loadedServers = JSON.parse(storedServers) as MCPServer[];
-        console.log("Loading MCP servers - Parsed:", loadedServers); // Added log
 
         if (loadedServers && Array.isArray(loadedServers)) {
 
@@ -124,9 +119,7 @@ const App: React.FC = () => {
       try {
 
         const serversToSave = mcpServers.map(({ client, transport, ...rest }) => rest);
-        console.log("Saving MCP servers - Data to save:", serversToSave); // Added log
         localStorage.setItem(LOCAL_STORAGE_MCP_SERVERS, JSON.stringify(serversToSave));
-        console.log("Saving MCP servers - Successfully saved."); // Added log
 
       } catch (error) {
         console.error("Error saving MCP servers to localStorage:", error);
@@ -171,8 +164,8 @@ const App: React.FC = () => {
               }
               return null;
             case 'gemini':
-              if (keys.gemini) {
-                return new ChatGoogleGenerativeAI({ apiKey: keys.gemini });
+              if (keys.gemini && typeof keys.gemini === 'string') {
+                return new ChatGoogleGenerativeAI({ apiKey: keys.gemini, model: "gemini-2.5-flash-preview-04-17" });
               }
               return null;
             default:
@@ -192,8 +185,6 @@ const App: React.FC = () => {
           return;
         }
 
-        console.log(`Initializing ${mcpServers.length} MCP server(s) for Langchain...`);
-
         const toolsAndCleanup = await convertMcpToLangchainTools(
           mcpServerConfig,
           { logLevel: 'info' } // Adjust log level as needed
@@ -204,8 +195,9 @@ const App: React.FC = () => {
         const agent = createReactAgent({
           llm,
           tools,
-          checkpointSaver: new MemorySaver(), // Or use a persistent checkpoint saver
         });
+
+        console.log(tools)
 
         setLangchainAgent(agent);
         setMcpCleanup(() => cleanup); // Store cleanup function

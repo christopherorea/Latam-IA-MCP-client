@@ -96,12 +96,6 @@ const LLMChat: React.FC<LLMChatProps> = ({
 
   }, [activeProvider, apiKeys, isCurrentProviderEffectivelyAvailable, mcpServers, keysLoadedFromStorage, langchainAgent]); // Add langchainAgent to dependency array
 
-  // Add logging for debugging input disabled state
-  useEffect(() => {
-    const isSendButtonDisabled = isLoading || !input.trim() || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable() && mcpServers.every(server => server.status !== 'connected'));
-  }, [isLoading, input, keysLoadedFromStorage, activeProvider, apiKeys, isCurrentProviderEffectivelyAvailable, langchainAgent, mcpServers]);
-
-
   const handleSend = async () => {
     // Allow sending if input is not empty AND (Langchain agent is available OR a provider is available OR an MCP server is connected)
     if (!input.trim() || isLoading || !keysLoadedFromStorage || (!langchainAgent && !isCurrentProviderEffectivelyAvailable() && mcpServers.every(server => server.status !== 'connected'))) return; // Add langchainAgent check
@@ -124,7 +118,6 @@ const LLMChat: React.FC<LLMChatProps> = ({
     try {
       if (langchainAgent) {
         // Use Langchain agent if available
-        console.log("Using Langchain agent...");
         const agentFinalState = await langchainAgent.invoke(
           { messages: [new HumanMessage(currentInput)] },
           { configurable: { thread_id: "chat-thread" } } // Use a consistent thread ID
