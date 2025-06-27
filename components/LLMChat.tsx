@@ -16,7 +16,7 @@ import { LoadingSpinnerIcon, OpenAiIcon, ClaudeIcon, GeminiIcon, BrainIcon } fro
 
 // Import Langchain types
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { HumanMessage } from "@langchain/core/messages";
+import { HumanMessage, AIMessage } from "@langchain/core/messages"; // Import AIMessage
 
 interface LLMChatProps {
   apiKeys: ApiKeys;
@@ -107,7 +107,8 @@ const LLMChat: React.FC<LLMChatProps> = ({
       timestamp: new Date(),
       provider: activeProvider // Still associate with activeProvider for display
     };
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage]; // Create the array including the new message
+    setMessages(updatedMessages); // Update state
     const currentInput = input;
     setInput('');
     setIsLoading(true);
@@ -118,19 +119,34 @@ const LLMChat: React.FC<LLMChatProps> = ({
     try {
       if (langchainAgent) {
         // Use Langchain agent if available
+        // Map ChatMessage objects to Langchain message types and take the last 20
+        const langchainMessages = updatedMessages.slice(-20).map(msg => { // Use updatedMessages here
+          // Filter out messages with empty text content and ensure correct types
+          if (msg.sender === 'user' && typeof msg.text === 'string' && msg.text.trim() !== '') {
+            return new HumanMessage(msg.text);
+          } else if (msg.sender === 'bot' && typeof msg.text === 'string' && msg.text.trim() !== '') {
+            return new AIMessage(msg.text);
+          }
+          // Optionally handle other message types or filter them out
+          return null;
+        }).filter(msg => msg !== null); // Filter out any null messages
+
         const agentFinalState = await langchainAgent.invoke(
-          { messages: [new HumanMessage(currentInput)] },
+          { messages: langchainMessages }, // Pass the mapped and sliced messages
           { configurable: { thread_id: "chat-thread" } } // Use a consistent thread ID
         );
 
-        // Extract the final AI message from the agent's state
-        const lastMessage = agentFinalState.messages[agentFinalState.messages.length - 1];
+        // Extract the final AI message from the agent's state and ensure it is valid
+        const finalMessages = agentFinalState?.messages;
+        const lastMessage = Array.isArray(finalMessages) && finalMessages.length > 0
+          ? finalMessages[finalMessages.length - 1]
+          : undefined;
 
-        if (lastMessage && lastMessage.content) {
-          botResponseText = lastMessage.content as string; // Assuming the final message content is a string
+        if (lastMessage && typeof lastMessage === 'object' && 'content' in lastMessage && typeof lastMessage.content === 'string') {
+          botResponseText = lastMessage.content;
         } else {
-          console.warn("Langchain agent did not return a final message with content:", agentFinalState);
-          botResponseText = "Received an unexpected response from the AI agent.";
+          console.warn("Langchain agent did not return a final message with valid content:", agentFinalState);
+          botResponseText = "Received an unexpected or empty response from the AI agent.";
           errorOccurred = true;
         }
 
