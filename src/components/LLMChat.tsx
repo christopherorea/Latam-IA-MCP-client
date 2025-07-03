@@ -1,4 +1,5 @@
 import React from 'react'; 
+import ReactMarkdown from 'react-markdown';
 import { ApiKeys, ChatMessage, LLMProvider, MCPServer, LLMService } from '../types';
 import { LoadingSpinnerIcon, OpenAiIcon, ClaudeIcon, GeminiIcon, BrainIcon } from '../constants';
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
@@ -101,13 +102,32 @@ const LLMChat: React.FC<LLMChatProps> = ({
                   className={`max-w-xs md:max-w-md lg:max-w-lg px-3.5 py-2.5 shadow ${getBubbleClasses(msg.sender)}`}
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                 >
-                  <p className="text-sm leading-relaxed">
+                  <div className="text-sm leading-relaxed">
                     {msg.sender === 'bot' && msg.text === '' ? (
                       <span className="inline-block animate-pulse text-sky-300">...</span>
+                    ) : msg.sender === 'bot' ? (
+                      <div className="prose prose-invert max-w-none">
+                        <ReactMarkdown
+                          components={{
+                            a: (props) => (
+                              <a 
+                                {...props} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sky-400 underline hover:text-sky-300 transition-colors"
+                              >
+                                {props.children}
+                              </a>
+                            ),
+                          }}
+                        >
+                          {msg.text}
+                        </ReactMarkdown>
+                      </div>
                     ) : (
                       msg.text
                     )}
-                  </p>
+                  </div>
                   {msg.sender !== 'system' && (
                     <p className={`text-xs mt-1.5 ${msg.sender === 'user' ? 'text-sky-200/80' : 'text-gray-400/80'} text-right`}>
                       {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
