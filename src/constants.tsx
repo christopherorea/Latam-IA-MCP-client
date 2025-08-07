@@ -10,11 +10,7 @@ export const FIREBASE_CONFIG = {
   appId: "YOUR_FIREBASE_APP_ID",
 };
 
-export const GEMINI_API_MODEL = "gemini-2.5-flash-preview-04-17";
-
-
-
-
+export const GEMINI_API_MODEL = "gemini-2.5-flash";
 
 export const LoadingSpinnerIcon: React.FC<{className?: string}> = ({className}) => (
   <svg className={`animate-spin -ml-1 mr-3 h-5 w-5 ${className || 'text-white'}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
